@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, type MessageOptions } from 'element-plus'
 import { useRoute } from 'vue-router'
 import { onMounted } from 'vue'
+import { userApi } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,19 +20,27 @@ const userAvatar = ref('https://picsum.photos/200/200?random=1')
 const currentYear = new Date().getFullYear()
 const isScrolled = ref(false)
 
+// 用户名查重相关
+const usernameChecking = ref(false)
+const usernameExists = ref(false)
+const usernameAvailable = ref(false)
+
 // 登录表单
 const loginForm = reactive({
   username: '',
   password: '',
 })
 
-// 注册表单
+// 注册表单 - 移除邮箱字段
 const registerForm = reactive({
   username: '',
-  email: '',
   password: '',
   confirmPassword: '',
 })
+
+// 表单引用
+const loginFormRef = ref()
+const registerFormRef = ref()
 
 // 表单验证规则
 const loginRules = {
@@ -40,10 +49,36 @@ const loginRules = {
 }
 
 const registerRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' },
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    {
+      validator: async (rule: any, value: string, callback: Function) => {
+        if (!value) {
+          callback()
+          return
+        }
+
+        // 检查用户名是否已存在
+        try {
+          usernameChecking.value = true
+          const response = await userApi.checkUsername(value)
+          usernameExists.value = response.data // 假设后端返回 { data: boolean }
+          usernameAvailable.value = !usernameExists.value
+
+          if (usernameExists.value) {
+            callback(new Error('用户名已存在'))
+          } else {
+            callback()
+          }
+        } catch (error) {
+          console.error('检查用户名失败:', error)
+          callback(new Error('检查用户名失败，请重试'))
+        } finally {
+          usernameChecking.value = false
+        }
+      },
+      trigger: 'blur',
+    },
   ],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   confirmPassword: [
@@ -68,23 +103,60 @@ const handleSearch = () => {
   }
 }
 
-const handleLogin = () => {
-  // 这里应该调用登录API
-  showMessage('登录成功', 'success')
-  isLoggedIn.value = true
-  showLoginDialog.value = false
-  loginForm.username = ''
-  loginForm.password = ''
+const handleLogin = async () => {
+  try {
+    // 验证表单
+    await loginFormRef.value.validate()
+
+    const response = await userApi.login({
+      username: loginForm.username,
+      password: loginForm.password,
+    })
+
+    showMessage('登录成功', 'success')
+    isLoggedIn.value = true
+    showLoginDialog.value = false
+    loginForm.username = ''
+    loginForm.password = ''
+  } catch (error: any) {
+    if (error.message) {
+      showMessage(error.message, 'error')
+    } else {
+      showMessage('登录失败，请检查用户名和密码', 'error')
+    }
+  }
 }
 
-const handleRegister = () => {
-  // 这里应该调用注册API
-  showMessage('注册成功', 'success')
-  showRegisterDialog.value = false
-  registerForm.username = ''
-  registerForm.email = ''
-  registerForm.password = ''
-  registerForm.confirmPassword = ''
+const handleRegister = async () => {
+  // 检查用户名是否可用
+  if (usernameExists.value) {
+    showMessage('用户名已存在，请选择其他用户名', 'error')
+    return
+  }
+
+  try {
+    // 验证表单
+    await registerFormRef.value.validate()
+
+    const response = await userApi.register({
+      username: registerForm.username,
+      password: registerForm.password,
+    })
+
+    showMessage('注册成功', 'success')
+    showRegisterDialog.value = false
+    registerForm.username = ''
+    registerForm.password = ''
+    registerForm.confirmPassword = ''
+    usernameExists.value = false
+    usernameAvailable.value = false
+  } catch (error: any) {
+    if (error.message) {
+      showMessage(error.message, 'error')
+    } else {
+      showMessage('注册失败，请重试', 'error')
+    }
+  }
 }
 
 const handleUserCommand = (command: string) => {
@@ -269,10 +341,22 @@ const handleScroll = () => {
             v-model="registerForm.username"
             placeholder="请输入用户名"
             class="input-custom"
-          />
-        </el-form-item>
-        <el-form-item prop="email" label="邮箱">
-          <el-input v-model="registerForm.email" placeholder="请输入邮箱" class="input-custom" />
+            :loading="usernameChecking"
+          >
+            <template #suffix>
+              <el-icon v-if="usernameChecking" class="is-loading">
+                <Loading />
+              </el-icon>
+              <el-icon v-else-if="usernameAvailable" style="color: #67c23a">
+                <CircleCheck />
+              </el-icon>
+              <el-icon v-else-if="usernameExists" style="color: #f56c6c">
+                <CircleClose />
+              </el-icon>
+            </template>
+          </el-input>
+          <div v-if="usernameExists" class="username-tip error">用户名已存在，请选择其他用户名</div>
+          <div v-else-if="usernameAvailable" class="username-tip success">用户名可用</div>
         </el-form-item>
         <el-form-item prop="password" label="密码">
           <el-input
@@ -294,7 +378,13 @@ const handleScroll = () => {
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showRegisterDialog = false">取消</el-button>
-          <el-button type="primary" @click="handleRegister">注册</el-button>
+          <el-button
+            type="primary"
+            @click="handleRegister"
+            :disabled="usernameExists || usernameChecking"
+          >
+            注册
+          </el-button>
         </span>
       </template>
     </el-dialog>
@@ -724,5 +814,40 @@ const handleScroll = () => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* 用户名提示样式 */
+.username-tip {
+  font-size: 12px;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.username-tip.success {
+  color: #67c23a;
+  background-color: #f0f9ff;
+  border: 1px solid #b3d8ff;
+}
+
+.username-tip.error {
+  color: #f56c6c;
+  background-color: #fef0f0;
+  border: 1px solid #fbc4c4;
+}
+
+/* 加载动画 */
+.is-loading {
+  animation: rotating 2s linear infinite;
+}
+
+@keyframes rotating {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
