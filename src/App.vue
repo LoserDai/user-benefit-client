@@ -62,6 +62,7 @@ const registerRules = {
         try {
           usernameChecking.value = true
           const response = await userApi.checkUsername(value)
+          console.log(response.data)
           usernameExists.value = response.data // 假设后端返回 { data: boolean }
           usernameAvailable.value = !usernameExists.value
 
@@ -128,14 +129,8 @@ const handleLogin = async () => {
 }
 
 const handleRegister = async () => {
-  // 检查用户名是否可用
-  if (usernameExists.value) {
-    showMessage('用户名已存在，请选择其他用户名', 'error')
-    return
-  }
-
   try {
-    // 验证表单
+    // 只做表单校验，异步查重逻辑已在表单规则里
     await registerFormRef.value.validate()
 
     const response = await userApi.register({
