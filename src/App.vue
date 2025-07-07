@@ -388,6 +388,7 @@ const handleScroll = () => {
 
 <style scoped>
 /* 基础颜色定义 */
+/* 基础颜色定义 */
 :root {
   --primary-color: #409eff;
   --primary-light: #ecf5ff;
@@ -401,10 +402,13 @@ const handleScroll = () => {
 }
 
 #app {
-  min-height: 100vh;
+  min-height: 100vh; /* 使页面至少占满整个视口高度 */
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
+  width: 100%; /* 确保页面宽度填满 */
+  margin: 0;
+  padding: 0;
 }
 
 /* 导航栏优化 */
@@ -428,10 +432,10 @@ const handleScroll = () => {
 }
 
 .header-content {
-  max-width: 1920px; /* 调整为更大的宽度 */
+  max-width: 1300px; /* 调整为更大的宽度，避免菜单被挤压 */
   width: 100%;
   margin: 0 auto;
-  padding: 0 80px; /* 增加内边距 */
+  padding: 0 60px; /* 增加内边距，确保元素不紧凑 */
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -481,7 +485,7 @@ const handleScroll = () => {
   color: var(--text-color);
   transition: all 0.2s ease;
   position: relative;
-  padding: 0 20px; /* 增加菜单项间距 */
+  padding: 0 25px; /* 增加菜单项间距 */
 }
 
 .nav-item:hover {
@@ -512,12 +516,12 @@ const handleScroll = () => {
 }
 
 .search-input {
-  width: 360px;
+  width: 380px;
   transition: width 0.3s ease;
 }
 
 .search-input:focus-within {
-  width: 420px;
+  width: 440px;
 }
 
 /* 按钮样式优化 */
@@ -649,7 +653,7 @@ const handleScroll = () => {
 }
 
 .footer-author {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--primary-color);
 }
 
@@ -695,15 +699,15 @@ const handleScroll = () => {
 @media (max-width: 1200px) {
   .header-content,
   .footer-content {
-    padding: 0 40px;
+    padding: 0 30px;
   }
 
   .nav-item {
-    padding: 0 15px;
+    padding: 0 20px;
   }
 
   .footer-links {
-    gap: 28px;
+    gap: 30px;
   }
 }
 
@@ -737,9 +741,9 @@ const handleScroll = () => {
 
 /* 主要内容区域 */
 .main-content {
-  flex: 1 0 auto;
+  flex: auto;
   margin-top: 80px;
-  padding: 40px 80px; /* 增加内容区域内边距 */
+  padding: 40px 80px;
   box-sizing: border-box;
 }
 
@@ -793,56 +797,5 @@ const handleScroll = () => {
 .input-custom:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-}
-
-/* 消息提示样式 */
-.message-custom {
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* 页面切换动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-/* 用户名提示样式 */
-.username-tip {
-  font-size: 12px;
-  margin-top: 4px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-.username-tip.success {
-  color: #67c23a;
-  background-color: #f0f9ff;
-  border: 1px solid #b3d8ff;
-}
-
-.username-tip.error {
-  color: #f56c6c;
-  background-color: #fef0f0;
-  border: 1px solid #fbc4c4;
-}
-
-/* 加载动画 */
-.is-loading {
-  animation: rotating 2s linear infinite;
-}
-
-@keyframes rotating {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 </style>
