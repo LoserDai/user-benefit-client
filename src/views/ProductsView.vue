@@ -92,7 +92,7 @@
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
-        :page-sizes="[12, 24, 36, 48]"
+        :page-sizes="[10, 20, 30, 40]"
         :total="totalProducts"
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
@@ -115,7 +115,7 @@ const selectedPriceRange = ref('')
 const selectedSort = ref('default')
 const searchKeyword = ref('')
 const currentPage = ref(1)
-const pageSize = ref(12)
+const pageSize = ref(10)
 const totalProducts = ref(100)
 
 // 分类选项

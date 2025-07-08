@@ -292,10 +292,10 @@ const handleScroll = () => {
           <p class="footer-tech">技术支持: Vue 3 + Element Plus</p>
         </div>
         <div class="footer-links">
-          <a href="#">关于我们</a>
+          <a href="https://github.com/LoserDai" target="_blank">关于我们</a>
           <a href="#">服务条款</a>
           <a href="#">隐私政策</a>
-          <a href="#">联系我们</a>
+          <a href="https://t.me/Allen_dai" target="_blank">联系我们</a>
         </div>
       </div>
     </el-footer>
