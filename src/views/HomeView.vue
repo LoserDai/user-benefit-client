@@ -57,21 +57,21 @@ const banners = ref<Banner[]>([
     title: '新人专享礼包',
     description: '注册即送100积分，新人专享权益等你来拿',
     buttonText: '立即注册',
-    image: 'https://picsum.photos/300/300?random=5',
+    image: '/src/assets/banner_1.png',
   },
   {
     id: 2,
     title: '限时秒杀活动',
     description: '精选商品限时秒杀，错过再等一年',
     buttonText: '立即抢购',
-    image: 'https://picsum.photos/300/300?random=6',
+    image: '/src/assets/banner_2.png',
   },
   {
     id: 3,
     title: '积分兑换专区',
     description: '积分兑换好礼，让积分更有价值',
     buttonText: '立即兑换',
-    image: 'https://picsum.photos/400/300?random=7',
+    image: '/src/assets/banner_3.png',
   },
 ])
 
