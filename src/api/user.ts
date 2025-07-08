@@ -63,4 +63,21 @@ export const userApi = {
   },
 }
 
+// 产品相关接口
+export const productApi = {
+  // 查询所有产品
+  queryAllProduct: (params: {
+    maxPrice: number
+    minPrice: number
+    pageNum: number
+    pageSize: number
+    productName: string
+    sortField: string
+    sortOrder: string
+    status: string
+  }) => {
+    return api.post('/product/queryAllProduct', params)
+  },
+}
+
 export default api

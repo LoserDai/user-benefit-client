@@ -53,25 +53,24 @@
       <el-row :gutter="20">
         <el-col :span="6" v-for="product in filteredProducts" :key="product.id">
           <el-card class="product-card" @click="handleProductClick(product)">
-            <div class="product-badge" v-if="product.badge">
+            <!-- 产品角标可根据需要自定义，这里暂不显示 -->
+            <!-- <div class="product-badge" v-if="product.badge">
               <el-tag :type="product.badgeType">{{ product.badge }}</el-tag>
-            </div>
-            <img :src="product.image" :alt="product.name" class="product-image" />
+            </div> -->
+            <img
+              :src="product.image || 'https://via.placeholder.com/300x200?text=暂无图片'"
+              :alt="product.productName"
+              class="product-image"
+            />
             <div class="product-info">
-              <h3>{{ product.name }}</h3>
-              <p class="product-desc">{{ product.description }}</p>
+              <h3>{{ product.productName }}</h3>
+              <p class="product-desc">{{ product.remark || '暂无描述' }}</p>
               <div class="product-meta">
-                <span class="sales-count">已售 {{ product.salesCount }}</span>
-                <span class="rating">
-                  <el-rate v-model="product.rating" disabled show-score text-color="#ff9900" />
-                </span>
+                <!-- 已售和星级评分已移除 -->
               </div>
               <div class="product-price">
-                <span class="current-price">¥{{ product.currentPrice }}</span>
-                <span class="original-price" v-if="product.originalPrice"
-                  >¥{{ product.originalPrice }}</span
-                >
-                <span class="discount" v-if="product.discount">{{ product.discount }}折</span>
+                <span class="current-price">¥{{ product.price }}</span>
+                <!-- 无原价、折扣等字段，隐藏 -->
               </div>
               <div class="product-actions">
                 <el-button type="primary" size="small" @click.stop="addToCart(product)">
@@ -103,9 +102,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { productApi } from '@/api/user'
 
 const router = useRouter()
 
@@ -116,7 +116,7 @@ const selectedSort = ref('default')
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
-const totalProducts = ref(100)
+const totalProducts = ref(0)
 
 // 分类选项
 const categories = ref([
@@ -137,161 +137,77 @@ const priceRanges = ref([
 ])
 
 // 产品数据
-const products = ref([
-  {
-    id: 1,
-    name: 'VIP会员月卡',
-    description: '享受专属权益和服务，包括专属客服、优先处理等',
-    image: 'https://via.placeholder.com/300x200/409eff/ffffff?text=VIP会员',
-    currentPrice: 29.9,
-    originalPrice: 39.9,
-    discount: 7.5,
-    salesCount: 1234,
-    rating: 4.5,
-    category: 'vip',
-    badge: '热销',
-    badgeType: 'danger',
-  },
-  {
-    id: 2,
-    name: '流量包10GB',
-    description: '全国通用流量包，有效期30天',
-    image: 'https://picsum.photos/400/300?random=8',
-    currentPrice: 19.9,
-    originalPrice: 25.9,
-    discount: 7.7,
-    salesCount: 856,
-    rating: 4.3,
-    category: 'data',
-    badge: '新品',
-    badgeType: 'success',
-  },
-  {
-    id: 3,
-    name: '话费充值100元',
-    description: '话费充值立享优惠，到账快速',
-    image: 'https://via.placeholder.com/300x200/e6a23c/ffffff?text=话费充值',
-    currentPrice: 95,
-    originalPrice: 100,
-    discount: 9.5,
-    salesCount: 2341,
-    rating: 4.7,
-    category: 'phone',
-  },
-  {
-    id: 4,
-    name: '电影票券',
-    description: '全国影院通用电影票，支持在线选座',
-    image: 'https://via.placeholder.com/300x200/f56c6c/ffffff?text=电影票',
-    currentPrice: 35,
-    originalPrice: 45,
-    discount: 7.8,
-    salesCount: 567,
-    rating: 4.2,
-    category: 'entertainment',
-    badge: '限时',
-    badgeType: 'warning',
-  },
-  {
-    id: 5,
-    name: 'KTV欢唱券',
-    description: '全国连锁KTV通用，支持在线预约',
-    image: 'https://via.placeholder.com/300x200/909399/ffffff?text=KTV券',
-    currentPrice: 88,
-    originalPrice: 128,
-    discount: 6.9,
-    salesCount: 234,
-    rating: 4.1,
-    category: 'entertainment',
-  },
-  {
-    id: 6,
-    name: '美食优惠券',
-    description: '全国知名餐厅通用优惠券',
-    image: 'https://via.placeholder.com/300x200/67c23a/ffffff?text=美食券',
-    currentPrice: 50,
-    originalPrice: 80,
-    discount: 6.3,
-    salesCount: 789,
-    rating: 4.4,
-    category: 'life',
-  },
-  {
-    id: 7,
-    name: 'VIP会员年卡',
-    description: '年度VIP会员，享受全年专属服务',
-    image: 'https://via.placeholder.com/300x200/409eff/ffffff?text=VIP年卡',
-    currentPrice: 299,
-    originalPrice: 399,
-    discount: 7.5,
-    salesCount: 456,
-    rating: 4.6,
-    category: 'vip',
-    badge: '推荐',
-    badgeType: 'primary',
-  },
-  {
-    id: 8,
-    name: '流量包20GB',
-    description: '大容量流量包，适合重度用户',
-    image: 'https://via.placeholder.com/300x200/67c23a/ffffff?text=流量包20GB',
-    currentPrice: 39.9,
-    originalPrice: 49.9,
-    discount: 8.0,
-    salesCount: 678,
-    rating: 4.3,
-    category: 'data',
-  },
-])
+const products = ref<any[]>([])
+
+// 获取产品列表
+const fetchProducts = async () => {
+  const params: any = {
+    pageNum: currentPage.value,
+    pageSize: pageSize.value,
+  }
+  // 分类
+  if (selectedCategory.value) {
+    params.category = selectedCategory.value
+  }
+  // 价格区间
+  if (selectedPriceRange.value) {
+    const [min, max] = selectedPriceRange.value.split('-')
+    params.minPrice = Number(min)
+    if (max) params.maxPrice = Number(max)
+  }
+  // 排序
+  if (selectedSort.value && selectedSort.value !== 'default') {
+    switch (selectedSort.value) {
+      case 'price-asc':
+        params.sortField = 'price'
+        params.sortOrder = 'asc'
+        break
+      case 'price-desc':
+        params.sortField = 'price'
+        params.sortOrder = 'desc'
+        break
+      case 'sales':
+        params.sortField = 'salesCount'
+        params.sortOrder = 'desc'
+        break
+      case 'newest':
+        params.sortField = 'id'
+        params.sortOrder = 'desc'
+        break
+    }
+  }
+  // 搜索
+  if (searchKeyword.value) {
+    params.productName = searchKeyword.value
+  }
+  // 状态（如有需要）
+  // params.status = 'ACTIVE'
+  try {
+    const res = await productApi.queryAllProduct(params)
+    products.value = res.data?.list || []
+    totalProducts.value = res.data?.total || 0
+  } catch (e) {
+    ElMessage.error('获取产品失败')
+  }
+}
+
+// 监听筛选、分页、排序、搜索变化自动请求
+watch(
+  [selectedCategory, selectedPriceRange, selectedSort, searchKeyword, currentPage, pageSize],
+  fetchProducts,
+)
+
+onMounted(() => {
+  fetchProducts()
+})
 
 // 计算属性
 const filteredProducts = computed(() => {
-  let result = [...products.value]
-
-  // 分类筛选
+  // 分类筛选在前端做
   if (selectedCategory.value) {
-    result = result.filter((product) => product.category === selectedCategory.value)
+    return products.value.filter((product) => product.category === selectedCategory.value)
   }
-
-  // 价格区间筛选
-  if (selectedPriceRange.value) {
-    const [min, max] = selectedPriceRange.value.split('-').map(Number)
-    result = result.filter((product) => {
-      if (max) {
-        return product.currentPrice >= min && product.currentPrice <= max
-      } else {
-        return product.currentPrice >= min
-      }
-    })
-  }
-
-  // 搜索筛选
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(
-      (product) =>
-        product.name.toLowerCase().includes(keyword) ||
-        product.description.toLowerCase().includes(keyword),
-    )
-  }
-
-  // 排序
-  switch (selectedSort.value) {
-    case 'price-asc':
-      result.sort((a, b) => a.currentPrice - b.currentPrice)
-      break
-    case 'price-desc':
-      result.sort((a, b) => b.currentPrice - a.currentPrice)
-      break
-    case 'sales':
-      result.sort((a, b) => b.salesCount - a.salesCount)
-      break
-    case 'newest':
-      result.sort((a, b) => b.id - a.id)
-      break
-  }
-
-  return result
+  return products.value
 })
 
 // 方法
@@ -305,11 +221,11 @@ const handleProductClick = (product: any) => {
 }
 
 const addToCart = (product: any) => {
-  ElMessage.success(`已将 ${product.name} 加入购物车`)
+  ElMessage.success(`已将 ${product.productName} 加入购物车`)
 }
 
 const buyNow = (product: any) => {
-  ElMessage.success(`正在购买: ${product.name}`)
+  ElMessage.success(`正在购买: ${product.productName}`)
 }
 
 const handleSizeChange = (size: number) => {
