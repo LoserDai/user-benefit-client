@@ -153,6 +153,7 @@ const fetchProducts = async () => {
   const params: any = {
     pageNum: currentPage.value,
     pageSize: pageSize.value,
+    status: 'ACTIVE',
   }
   // 分类
   if (selectedCategory.value) {
@@ -189,8 +190,6 @@ const fetchProducts = async () => {
   if (searchKeyword.value) {
     params.productName = searchKeyword.value
   }
-  // 状态（如有需要）
-  // params.status = 'ACTIVE'
   try {
     const res = await productApi.queryAllProduct(params)
     products.value = res.data?.list || []
