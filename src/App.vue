@@ -388,7 +388,6 @@ const handleScroll = () => {
 
 <style scoped>
 /* 基础颜色定义 */
-/* 基础颜色定义 */
 :root {
   --primary-color: #409eff;
   --primary-light: #ecf5ff;
@@ -399,6 +398,9 @@ const handleScroll = () => {
   --background-color: #f5f7fa;
   --card-background: #ffffff;
   --border-color: #dcdfe6;
+}
+.header-right :deep(.search-input .el-input__wrapper) {
+  padding: 1px 1px !important;
 }
 
 #app {

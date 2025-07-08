@@ -80,7 +80,7 @@ const quickAccess = ref<QuickAccessItem[]>([
     id: 1,
     title: '权益产品',
     description: '精选各类权益产品',
-    icon: 'Gift',
+    icon: 'shoppingBag',
     route: '/products',
   },
   {
