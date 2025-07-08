@@ -406,7 +406,7 @@ const handleScroll = () => {
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
-  width: 100%; /* 确保页面宽度填满 */
+  width: 100%;
   margin: 0;
   padding: 0;
 }
@@ -440,7 +440,7 @@ const handleScroll = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 80px;
+  height: 60px;
 }
 
 .logo {
@@ -627,7 +627,7 @@ const handleScroll = () => {
 }
 
 .footer-content {
-  max-width: 1920px; /* 调整为更大的宽度 */
+  max-width: 100%; /* 调整为更大的宽度 */
   margin: 0 auto;
   padding: 32px 80px 24px 80px; /* 增加内边距 */
   display: flex;
@@ -742,8 +742,8 @@ const handleScroll = () => {
 /* 主要内容区域 */
 .main-content {
   flex: auto;
-  margin-top: 80px;
-  padding: 40px 80px;
+  margin-top: 70px;
+  padding: 0px 0px;
   box-sizing: border-box;
 }
 
