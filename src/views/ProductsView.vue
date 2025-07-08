@@ -30,7 +30,7 @@
           </el-select>
         </el-col>
         <el-col :span="6">
-          <el-select v-model="selectedSort" placeholder="排序方式">
+          <el-select v-model="selectedSort" placeholder="排序方式" clearable>
             <el-option label="默认排序" value="default" />
             <el-option label="价格从低到高" value="price-asc" />
             <el-option label="价格从高到低" value="price-desc" />
@@ -39,7 +39,12 @@
           </el-select>
         </el-col>
         <el-col :span="6">
-          <el-input v-model="searchKeyword" placeholder="搜索产品..." @keyup.enter="handleSearch">
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索产品..."
+            clearable
+            @keyup.enter="handleSearch"
+          >
             <template #suffix>
               <el-icon class="el-input__icon"><Search /></el-icon>
             </template>
@@ -50,8 +55,12 @@
 
     <!-- 产品列表 -->
     <div class="products-grid">
-      <el-row :gutter="20">
-        <el-col :span="6" v-for="product in filteredProducts" :key="product.id">
+      <el-row :gutter="20" :justify="filteredProducts.length === 1 ? 'center' : 'start'">
+        <el-col
+          v-for="product in filteredProducts"
+          :key="product.id"
+          :span="filteredProducts.length === 1 ? 8 : 6"
+        >
           <el-card class="product-card" @click="handleProductClick(product)">
             <!-- 产品角标可根据需要自定义，这里暂不显示 -->
             <!-- <div class="product-badge" v-if="product.badge">
@@ -91,7 +100,7 @@
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
-        :page-sizes="[10, 20, 30, 40]"
+        :page-sizes="[12, 24, 36, 48]"
         :total="totalProducts"
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
@@ -115,7 +124,7 @@ const selectedPriceRange = ref('')
 const selectedSort = ref('default')
 const searchKeyword = ref('')
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(12)
 const totalProducts = ref(0)
 
 // 分类选项
