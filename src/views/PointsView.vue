@@ -13,6 +13,19 @@
           <el-card class="points-card">
             <div class="points-item">
               <div class="points-icon">
+                <el-icon :size="40"><Eleme /></el-icon>
+              </div>
+              <div class="points-content">
+                <h3>我的Balance</h3>
+                <p class="points-number">{{ userBalance }}</p>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="8">
+          <el-card class="points-card">
+            <div class="points-item">
+              <div class="points-icon">
                 <el-icon :size="40"><Coin /></el-icon>
               </div>
               <div class="points-content">
@@ -26,24 +39,11 @@
           <el-card class="points-card">
             <div class="points-item">
               <div class="points-icon">
-                <el-icon :size="40"><Gift /></el-icon>
+                <el-icon :size="40"><shopping-cart-full /></el-icon>
               </div>
               <div class="points-content">
-                <h3>已兑换</h3>
-                <p class="points-number">{{ exchangedCount }}</p>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="8">
-          <el-card class="points-card">
-            <div class="points-item">
-              <div class="points-icon">
-                <el-icon :size="40"><Clock /></el-icon>
-              </div>
-              <div class="points-content">
-                <h3>即将过期</h3>
-                <p class="points-number">{{ expiringPoints }}</p>
+                <h3>已消费</h3>
+                <p class="points-number">{{ consumedAmount }}</p>
               </div>
             </div>
           </el-card>
@@ -51,109 +51,44 @@
       </el-row>
     </div>
 
-    <!-- 筛选和搜索 -->
-    <div class="filter-section">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <el-select v-model="selectedCategory" placeholder="选择分类" clearable>
-            <el-option
-              v-for="category in categories"
-              :key="category.value"
-              :label="category.label"
-              :value="category.value"
-            />
-          </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-select v-model="selectedPointsRange" placeholder="积分区间" clearable>
-            <el-option
-              v-for="range in pointsRanges"
-              :key="range.value"
-              :label="range.label"
-              :value="range.value"
-            />
-          </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-select v-model="selectedSort" placeholder="排序方式">
-            <el-option label="默认排序" value="default" />
-            <el-option label="积分从低到高" value="points-asc" />
-            <el-option label="积分从高到低" value="points-desc" />
-            <el-option label="兑换人数" value="popular" />
-            <el-option label="最新上架" value="newest" />
-          </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-input v-model="searchKeyword" placeholder="搜索商品..." @keyup.enter="handleSearch">
-            <template #suffix>
-              <el-icon class="el-input__icon"><Search /></el-icon>
-            </template>
-          </el-input>
-        </el-col>
-      </el-row>
-    </div>
-
-    <!-- 商品列表 -->
-    <div class="points-grid">
-      <el-row :gutter="20">
-        <el-col :span="6" v-for="item in filteredItems" :key="item.id">
-          <el-card class="points-item-card">
-            <div class="item-badge" v-if="item.badge">
-              <el-tag :type="item.badgeType">{{ item.badge }}</el-tag>
-            </div>
-            <img :src="item.image" :alt="item.name" class="item-image" />
-            <div class="item-info">
-              <h3>{{ item.name }}</h3>
-              <p class="item-desc">{{ item.description }}</p>
-              <div class="item-meta">
-                <span class="exchange-count">已兑换 {{ item.exchangeCount }}</span>
-                <span class="stock-count">库存 {{ item.stockCount }}</span>
-              </div>
-              <div class="points-required">
-                <span class="points-number">{{ item.pointsRequired }}</span>
-                <span class="points-label">积分</span>
-                <span class="original-price" v-if="item.originalPrice"
-                  >价值¥{{ item.originalPrice }}</span
-                >
-              </div>
-              <div class="item-actions">
-                <el-button
-                  type="primary"
-                  size="small"
-                  :disabled="item.stockCount === 0 || userPoints < item.pointsRequired"
-                  @click="exchangeItem(item)"
-                >
-                  {{ item.stockCount === 0 ? '已兑完' : '立即兑换' }}
-                </el-button>
-                <el-button size="small" @click="addToWishlist(item)"> 加入心愿单 </el-button>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </div>
-
-    <!-- 分页 -->
-    <div class="pagination-section">
-      <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
-        :page-sizes="[12, 24, 36, 48]"
-        :total="totalItems"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
+    <!-- 积分兑换区域 -->
+    <div class="exchange-section">
+      <h2>积分兑换</h2>
+      <div class="exchange-form-vertical">
+        <div class="exchange-row">
+          <span class="exchange-label-left">{{ exchangeFromLabel }}</span>
+          <el-input v-model="inputFrom" placeholder="请输入内容" class="exchange-el-input" />
+        </div>
+        <div class="exchange-swap-row">
+          <el-button
+            icon="ArrowDown"
+            @click="swapExchangeDirection"
+            class="swap-btn-vertical"
+            circle
+          />
+        </div>
+        <div class="exchange-row">
+          <span class="exchange-label-left">{{ exchangeToLabel }}</span>
+          <el-input v-model="inputTo" placeholder="自动计算" class="exchange-el-input" disabled />
+        </div>
+        <div class="exchange-btn-row">
+          <el-button type="primary" @click="handleExchange" class="exchange-btn">兑换</el-button>
+        </div>
+      </div>
+      <div class="exchange-info">
+        <div>兑换率：1 Balance = {{ exchangeRate }} 积分</div>
+        <div>手续费：{{ feeRate * 100 }}%</div>
+      </div>
     </div>
 
     <!-- 兑换确认对话框 -->
     <el-dialog v-model="showExchangeDialog" title="确认兑换" width="400px">
       <div class="exchange-confirm">
-        <img :src="selectedItem?.image" :alt="selectedItem?.name" class="confirm-image" />
-        <h3>{{ selectedItem?.name }}</h3>
-        <p>需要消耗 {{ selectedItem?.pointsRequired }} 积分</p>
-        <p>当前积分: {{ userPoints }}</p>
-        <p>兑换后剩余: {{ userPoints - (selectedItem?.pointsRequired || 0) }}</p>
+        <p>
+          确定要将 <b>{{ inputFrom }}</b> {{ exchangeFromLabel }} 兑换为 <b>{{ inputTo }}</b>
+          {{ exchangeToLabel }} 吗？
+        </p>
+        <p>手续费：{{ feeAmount }} {{ exchangeFromLabel }}</p>
       </div>
       <template #footer>
         <el-button @click="showExchangeDialog = false">取消</el-button>
@@ -164,237 +99,97 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
-// 响应式数据
-const selectedCategory = ref('')
-const selectedPointsRange = ref('')
-const selectedSort = ref('default')
-const searchKeyword = ref('')
-const currentPage = ref(1)
-const pageSize = ref(12)
-const totalItems = ref(100)
+// 用户信息
+const userBalance = ref(100.5) // 余额
+const userPoints = ref(2580) // 积分
+const consumedAmount = ref(500) // 已消费
+
+// 积分兑换相关
+const exchangeDirection = ref<'balance-to-points' | 'points-to-balance'>('balance-to-points')
 const showExchangeDialog = ref(false)
-const selectedItem = ref<any>(null)
+const exchangeRate = 10 // 1余额=10积分
+const feeRate = 0.02 // 2%手续费
 
-// 用户积分信息
-const userPoints = ref(2580)
-const exchangedCount = ref(12)
-const expiringPoints = ref(500)
+// inputFrom/inputTo 类型调整为字符串，便于el-input
+const inputFrom = ref('1')
+const inputTo = ref('')
 
-// 分类选项
-const categories = ref([
-  { label: '实物商品', value: 'physical' },
-  { label: '虚拟商品', value: 'virtual' },
-  { label: '优惠券', value: 'coupon' },
-  { label: '会员服务', value: 'vip' },
-  { label: '生活服务', value: 'life' },
-])
+const exchangeFromLabel = computed(() =>
+  exchangeDirection.value === 'balance-to-points' ? 'Balance' : '积分',
+)
+const exchangeToLabel = computed(() =>
+  exchangeDirection.value === 'balance-to-points' ? '积分' : 'Balance',
+)
+const exchangeFromMax = computed(() =>
+  exchangeDirection.value === 'balance-to-points' ? userBalance.value : userPoints.value,
+)
 
-// 积分区间选项
-const pointsRanges = ref([
-  { label: '0-100积分', value: '0-100' },
-  { label: '100-500积分', value: '100-500' },
-  { label: '500-1000积分', value: '500-1000' },
-  { label: '1000-2000积分', value: '1000-2000' },
-  { label: '2000积分以上', value: '2000+' },
-])
-
-// 积分商品数据
-const pointsItems = ref([
-  {
-    id: 1,
-    name: 'VIP会员月卡',
-    description: '享受专属权益和服务',
-    image: 'https://via.placeholder.com/300x200/409eff/ffffff?text=VIP会员',
-    pointsRequired: 500,
-    originalPrice: 29.9,
-    exchangeCount: 1234,
-    stockCount: 100,
-    category: 'vip',
-    badge: '热门',
-    badgeType: 'danger',
-  },
-  {
-    id: 2,
-    name: '流量包5GB',
-    description: '全国通用流量包',
-    image: 'https://via.placeholder.com/300x200/67c23a/ffffff?text=流量包',
-    pointsRequired: 300,
-    originalPrice: 19.9,
-    exchangeCount: 856,
-    stockCount: 50,
-    category: 'virtual',
-    badge: '新品',
-    badgeType: 'success',
-  },
-  {
-    id: 3,
-    name: '话费充值50元',
-    description: '话费充值立享优惠',
-    image: 'https://via.placeholder.com/300x200/e6a23c/ffffff?text=话费充值',
-    pointsRequired: 800,
-    originalPrice: 50,
-    exchangeCount: 567,
-    stockCount: 200,
-    category: 'virtual',
-  },
-  {
-    id: 4,
-    name: '电影票券',
-    description: '全国影院通用电影票',
-    image: 'https://via.placeholder.com/300x200/f56c6c/ffffff?text=电影票',
-    pointsRequired: 400,
-    originalPrice: 35,
-    exchangeCount: 789,
-    stockCount: 150,
-    category: 'coupon',
-    badge: '限时',
-    badgeType: 'warning',
-  },
-  {
-    id: 5,
-    name: '咖啡券',
-    description: '星巴克咖啡券',
-    image: 'https://via.placeholder.com/300x200/909399/ffffff?text=咖啡券',
-    pointsRequired: 200,
-    originalPrice: 25,
-    exchangeCount: 234,
-    stockCount: 80,
-    category: 'coupon',
-  },
-  {
-    id: 6,
-    name: '蓝牙耳机',
-    description: '高品质蓝牙耳机',
-    image: 'https://via.placeholder.com/300x200/409eff/ffffff?text=蓝牙耳机',
-    pointsRequired: 2000,
-    originalPrice: 199,
-    exchangeCount: 45,
-    stockCount: 20,
-    category: 'physical',
-    badge: '限量',
-    badgeType: 'info',
-  },
-  {
-    id: 7,
-    name: '外卖优惠券',
-    description: '美团外卖优惠券',
-    image: 'https://via.placeholder.com/300x200/67c23a/ffffff?text=外卖券',
-    pointsRequired: 150,
-    originalPrice: 20,
-    exchangeCount: 1234,
-    stockCount: 300,
-    category: 'coupon',
-  },
-  {
-    id: 8,
-    name: '打车优惠券',
-    description: '滴滴打车优惠券',
-    image: 'https://via.placeholder.com/300x200/e6a23c/ffffff?text=打车券',
-    pointsRequired: 100,
-    originalPrice: 15,
-    exchangeCount: 987,
-    stockCount: 500,
-    category: 'coupon',
-  },
-])
-
-// 计算属性
-const filteredItems = computed(() => {
-  let result = [...pointsItems.value]
-
-  // 分类筛选
-  if (selectedCategory.value) {
-    result = result.filter((item) => item.category === selectedCategory.value)
+const feeAmount = computed(() => {
+  if (exchangeDirection.value === 'balance-to-points') {
+    return (Number(inputFrom.value) * feeRate).toFixed(2)
+  } else {
+    return Math.floor(Number(inputFrom.value) * feeRate)
   }
-
-  // 积分区间筛选
-  if (selectedPointsRange.value) {
-    const [min, max] = selectedPointsRange.value.split('-').map(Number)
-    result = result.filter((item) => {
-      if (max) {
-        return item.pointsRequired >= min && item.pointsRequired <= max
-      } else {
-        return item.pointsRequired >= min
-      }
-    })
-  }
-
-  // 搜索筛选
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(
-      (item) =>
-        item.name.toLowerCase().includes(keyword) ||
-        item.description.toLowerCase().includes(keyword),
-    )
-  }
-
-  // 排序
-  switch (selectedSort.value) {
-    case 'points-asc':
-      result.sort((a, b) => a.pointsRequired - b.pointsRequired)
-      break
-    case 'points-desc':
-      result.sort((a, b) => b.pointsRequired - a.pointsRequired)
-      break
-    case 'popular':
-      result.sort((a, b) => b.exchangeCount - a.exchangeCount)
-      break
-    case 'newest':
-      result.sort((a, b) => b.id - a.id)
-      break
-  }
-
-  return result
 })
 
-// 方法
-const handleSearch = () => {
-  currentPage.value = 1
-  ElMessage.success('搜索完成')
+watch([inputFrom, exchangeDirection], () => {
+  const from = Number(inputFrom.value)
+  if (isNaN(from) || from <= 0) {
+    inputTo.value = ''
+    return
+  }
+  if (exchangeDirection.value === 'balance-to-points') {
+    // 余额兑换积分
+    let afterFee = from - from * feeRate
+    inputTo.value = String(Math.floor(afterFee * exchangeRate))
+  } else {
+    // 积分兑换余额
+    let afterFee = from - Math.floor(from * feeRate)
+    inputTo.value = String(Number((afterFee / exchangeRate).toFixed(2)))
+  }
+})
+
+function swapExchangeDirection() {
+  exchangeDirection.value =
+    exchangeDirection.value === 'balance-to-points' ? 'points-to-balance' : 'balance-to-points'
+  inputFrom.value = '1'
 }
 
-const exchangeItem = (item: any) => {
-  if (userPoints.value < item.pointsRequired) {
-    ElMessage.warning('积分不足，无法兑换')
+function handleExchange() {
+  const from = Number(inputFrom.value)
+  if (isNaN(from) || from <= 0) return
+  if (exchangeDirection.value === 'balance-to-points' && from > userBalance.value) {
+    ElMessage.warning('Balance不足')
     return
   }
-  if (item.stockCount === 0) {
-    ElMessage.warning('商品库存不足')
+  if (exchangeDirection.value === 'points-to-balance' && from > userPoints.value) {
+    ElMessage.warning('积分不足')
     return
   }
-
-  selectedItem.value = item
   showExchangeDialog.value = true
 }
 
-const confirmExchange = () => {
-  if (selectedItem.value) {
-    userPoints.value -= selectedItem.value.pointsRequired
-    selectedItem.value.stockCount--
-    selectedItem.value.exchangeCount++
-    exchangedCount.value++
-
-    ElMessage.success(`成功兑换: ${selectedItem.value.name}`)
-    showExchangeDialog.value = false
-    selectedItem.value = null
+function confirmExchange() {
+  const from = Number(inputFrom.value)
+  if (exchangeDirection.value === 'balance-to-points') {
+    const fee = from * feeRate
+    const realFrom = from - fee
+    const points = Math.floor(realFrom * exchangeRate)
+    userBalance.value -= from
+    userPoints.value += points
+    ElMessage.success(`成功将${from}Balance兑换为${points}积分（手续费${fee.toFixed(2)}Balance）`)
+  } else {
+    const fee = Math.floor(from * feeRate)
+    const realFrom = from - fee
+    const balance = Number((realFrom / exchangeRate).toFixed(2))
+    userPoints.value -= from
+    userBalance.value += balance
+    ElMessage.success(`成功将${from}积分兑换为${balance}Balance（手续费${fee}积分）`)
   }
-}
-
-const addToWishlist = (item: any) => {
-  ElMessage.success(`已将 ${item.name} 加入心愿单`)
-}
-
-const handleSizeChange = (size: number) => {
-  pageSize.value = size
-  currentPage.value = 1
-}
-
-const handleCurrentChange = (page: number) => {
-  currentPage.value = page
+  showExchangeDialog.value = false
 }
 </script>
 
@@ -584,5 +379,95 @@ const handleCurrentChange = (page: number) => {
   margin-bottom: 48px;
   padding-left: 8px;
   padding-right: 8px;
+}
+.exchange-section {
+  margin: 40px auto 0 auto;
+  max-width: 600px;
+  background: #f9fafc;
+  border-radius: 12px;
+  padding: 32px 24px 24px 24px;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.08);
+}
+.exchange-section h2 {
+  text-align: center;
+  margin-bottom: 24px;
+  color: #409eff;
+}
+.exchange-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.exchange-input-large {
+  width: 140px !important;
+  font-size: 22px !important;
+  height: 48px !important;
+}
+.exchange-label {
+  font-size: 18px;
+  color: #606266;
+  min-width: 48px;
+  text-align: center;
+}
+.swap-btn {
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  color: #409eff;
+  font-size: 20px;
+  margin: 0 8px;
+}
+.exchange-btn {
+  font-size: 18px;
+  padding: 0 28px;
+  height: 48px;
+}
+.exchange-info {
+  text-align: center;
+  color: #909399;
+  font-size: 15px;
+  margin-top: 8px;
+  line-height: 2;
+}
+.exchange-form-vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 18px;
+}
+.exchange-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 8px;
+}
+.exchange-label-left {
+  font-size: 18px;
+  color: #606266;
+  min-width: 80px;
+  text-align: right;
+  margin-right: 12px;
+}
+.exchange-el-input {
+  width: 220px !important;
+  font-size: 22px !important;
+  height: 48px !important;
+}
+.exchange-swap-row {
+  margin: 8px 0 8px 0;
+}
+.swap-btn-vertical {
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  color: #409eff;
+  font-size: 22px;
+}
+.exchange-btn-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
 }
 </style>
