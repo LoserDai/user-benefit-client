@@ -5,6 +5,7 @@ import { ElMessage, type MessageOptions } from 'element-plus'
 import { useRoute } from 'vue-router'
 import { onMounted } from 'vue'
 import { userApi } from '@/api/user'
+import { Goods } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -205,14 +206,26 @@ const handleRegister = async () => {
 const handleUserCommand = (command: string) => {
   switch (command) {
     case 'profile':
+      if (!isLoggedIn.value) {
+        showMessage('请先登录', 'warning')
+        showLoginDialog.value = true
+        return
+      }
       router.push('/profile')
       break
     case 'orders':
+      if (!isLoggedIn.value) {
+        showMessage('请先登录', 'warning')
+        showLoginDialog.value = true
+        return
+      }
       router.push('/orders')
       break
     case 'logout':
       clearLoginState()
       showMessage('已退出登录', 'success')
+      // 退出登录后跳转到主页面
+      router.push('/')
       break
   }
 }
@@ -307,10 +320,10 @@ const handleScroll = () => {
                     <el-icon><User /></el-icon>个人中心
                   </el-dropdown-item>
                   <el-dropdown-item command="orders" class="dropdown-item">
-                    <el-icon><Shopping /></el-icon>我的订单
+                    <el-icon><Sell /></el-icon>我的订单
                   </el-dropdown-item>
                   <el-dropdown-item command="logout" class="dropdown-item">
-                    <el-icon><Logout /></el-icon>退出登录
+                    <el-icon><Close /></el-icon>退出登录
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>

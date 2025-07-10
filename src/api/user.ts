@@ -72,6 +72,23 @@ export const userApi = {
   login: (data: { account: string; password: string }) => {
     return api.post('/user/login', data)
   },
+
+  // 获取当前用户信息
+  getCurrentUser: () => {
+    return api.get('/user/current')
+  },
+
+  // 更新用户信息
+  updateUser: (data: {
+    id: string
+    account: string
+    email: string
+    phone: string
+    gender: number
+    status: string
+  }) => {
+    return api.post('/user/update', data)
+  },
 }
 
 // 产品相关接口

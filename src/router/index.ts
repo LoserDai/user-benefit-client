@@ -38,11 +38,13 @@ const router = createRouter({
       path: '/orders',
       name: 'orders',
       component: () => import('../views/OrdersView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/profile',
       name: 'profile',
       component: () => import('../views/ProfileView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/search',
@@ -50,6 +52,24 @@ const router = createRouter({
       component: () => import('../views/SearchView.vue'),
     },
   ],
+})
+
+// 路由守卫
+router.beforeEach((to, from, next) => {
+  // 检查路由是否需要登录
+  if (to.meta.requiresAuth) {
+    // 检查本地存储中的登录状态
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+    const currentUser = localStorage.getItem('currentUser')
+
+    if (!isLoggedIn || !currentUser) {
+      // 未登录，跳转到首页并显示登录提示
+      next('/')
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

@@ -14,11 +14,17 @@
             <el-avatar :size="80" :src="userInfo.avatar">
               <el-icon><User /></el-icon>
             </el-avatar>
-            <h3>{{ userInfo.username }}</h3>
+            <h3>{{ userInfo.account }}</h3>
+            <p class="user-id">ID: {{ userInfo.id }}</p>
             <p>{{ userInfo.email }}</p>
-            <el-tag :type="userInfo.vipLevel === 'VIP' ? 'warning' : 'info'">
-              {{ userInfo.vipLevel }}
-            </el-tag>
+            <div class="user-tags">
+              <el-tag :type="userInfo.vipLevel === 'VIP' ? 'warning' : 'info'" size="small">
+                {{ userInfo.vipLevel }}
+              </el-tag>
+              <el-tag :type="getStatusTagType(userInfo.status)" size="small">
+                {{ getStatusText(userInfo.status) }}
+              </el-tag>
+            </div>
           </div>
 
           <el-menu :default-active="activeMenu" @select="handleMenuSelect" class="profile-menu">
@@ -55,17 +61,17 @@
           </template>
 
           <el-form :model="userInfo" label-width="100px">
+            <el-form-item label="用户编号">
+              <el-input v-model="userInfo.id" disabled />
+            </el-form-item>
             <el-form-item label="用户名">
-              <el-input v-model="userInfo.username" />
+              <el-input v-model="userInfo.account" />
             </el-form-item>
             <el-form-item label="邮箱">
               <el-input v-model="userInfo.email" disabled />
             </el-form-item>
             <el-form-item label="手机号">
               <el-input v-model="userInfo.phone" />
-            </el-form-item>
-            <el-form-item label="昵称">
-              <el-input v-model="userInfo.nickname" />
             </el-form-item>
             <el-form-item label="性别">
               <el-radio-group v-model="userInfo.gender">
@@ -74,11 +80,18 @@
                 <el-radio label="other">其他</el-radio>
               </el-radio-group>
             </el-form-item>
-            <el-form-item label="生日">
-              <el-date-picker v-model="userInfo.birthday" type="date" placeholder="选择日期" />
+            <el-form-item label="账户状态">
+              <el-input :value="getStatusText(userInfo.status)" disabled />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="saveBasicInfo">保存修改</el-button>
+              <el-button
+                type="primary"
+                @click="saveBasicInfo"
+                :loading="isSaving"
+                :disabled="isSaving"
+              >
+                {{ isSaving ? '保存中...' : '保存修改' }}
+              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -245,26 +258,70 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { userApi } from '@/api/user'
 
 // 响应式数据
 const activeMenu = ref('basic')
+const isSaving = ref(false) // 保存状态
+const originalAccount = ref('') // 原始用户名，用于比较是否修改
 
 // 用户信息
 const userInfo = ref({
-  username: 'user123',
-  email: 'user123@example.com',
-  phone: '138****8888',
-  nickname: '小明',
+  id: '',
+  account: '',
+  email: '',
+  phone: '',
   gender: 'male',
-  birthday: '1990-01-01',
+  status: '',
+  birthday: '',
   avatar: '',
   vipLevel: 'VIP',
-  points: 2580,
-  totalPoints: 5000,
-  usedPoints: 2420,
+  points: 0,
+  totalPoints: 0,
+  usedPoints: 0,
 })
+
+// 获取当前用户信息
+const fetchCurrentUser = async () => {
+  try {
+    const response = await userApi.getCurrentUser()
+    console.log('获取用户信息成功:', response)
+
+    // 更新用户信息
+    if (response.data) {
+      // 性别转换：1->male, 0->female, 3->other
+      const genderMap: { [key: number]: string } = {
+        1: 'male',
+        0: 'female',
+        3: 'other',
+      }
+
+      userInfo.value = {
+        ...userInfo.value,
+        id: response.data.id || '未知',
+        account: response.data.account || '',
+        email: response.data.email || '',
+        phone: response.data.phone || '',
+        gender: genderMap[response.data.gender] || 'male',
+        status: response.data.status || '',
+        birthday: response.data.birthday || '',
+        avatar: response.data.avatar || '',
+        vipLevel: response.data.vipLevel || '普通用户',
+        points: response.data.points || 0,
+        totalPoints: response.data.totalPoints || 0,
+        usedPoints: response.data.usedPoints || 0,
+      }
+
+      // 保存原始用户名，用于后续比较
+      originalAccount.value = response.data.account || ''
+    }
+  } catch (error: any) {
+    console.error('获取用户信息失败:', error)
+    ElMessage.error('获取用户信息失败，请重新登录')
+  }
+}
 
 // 积分历史
 const pointsHistory = ref([
@@ -327,8 +384,62 @@ const handleMenuSelect = (key: string) => {
   activeMenu.value = key
 }
 
-const saveBasicInfo = () => {
-  ElMessage.success('基本信息保存成功')
+const saveBasicInfo = async () => {
+  if (isSaving.value) return // 防止重复提交
+
+  try {
+    isSaving.value = true
+
+    // 先校验用户名是否已存在（只有当用户名发生改变时才检查）
+    if (userInfo.value.account !== originalAccount.value) {
+      try {
+        const checkResponse = await userApi.checkUsername(userInfo.value.account)
+        // 如果请求成功，说明用户名可用，继续保存
+      } catch (error: any) {
+        // 如果错误码是40002，说明用户名已存在
+        if (error.code === 40002) {
+          ElMessage.error('用户名已存在，请选择其他用户名')
+          return
+        } else {
+          // 其他错误，可能是网络问题等
+          console.error('检查用户名失败:', error)
+          ElMessage.error('检查用户名失败，请重试')
+          return
+        }
+      }
+    }
+
+    // 性别转换：male->1, female->0, other->3
+    const genderMap: { [key: string]: number } = {
+      male: 1,
+      female: 0,
+      other: 3,
+    }
+
+    const updateData = {
+      id: userInfo.value.id,
+      account: userInfo.value.account,
+      email: userInfo.value.email,
+      phone: userInfo.value.phone,
+      gender: genderMap[userInfo.value.gender] || 1,
+      status: userInfo.value.status,
+    }
+
+    const response = await userApi.updateUser(updateData)
+    console.log('更新用户信息成功:', response)
+    ElMessage.success('基本信息保存成功')
+
+    // 更新原始用户名，以便后续比较
+    originalAccount.value = userInfo.value.account
+
+    // 可选：重新获取用户信息以确保数据同步
+    // await fetchCurrentUser()
+  } catch (error: any) {
+    console.error('更新用户信息失败:', error)
+    ElMessage.error('保存失败，请重试')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const changePassword = () => {
@@ -364,6 +475,35 @@ const setDefaultAddress = (address: any) => {
 const savePreferences = () => {
   ElMessage.success('偏好设置保存成功')
 }
+
+// 获取状态文本
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'ACTIVE':
+      return '已激活'
+    case 'INACTIVE':
+      return '未激活'
+    default:
+      return '已注销'
+  }
+}
+
+// 获取状态标签类型
+const getStatusTagType = (status: string) => {
+  switch (status) {
+    case 'ACTIVE':
+      return 'success'
+    case 'INACTIVE':
+      return 'warning'
+    default:
+      return 'danger'
+  }
+}
+
+// 组件挂载时获取用户信息
+onMounted(() => {
+  fetchCurrentUser()
+})
 </script>
 
 <style scoped>
@@ -415,6 +555,24 @@ const savePreferences = () => {
   margin: 0 0 12px 0;
   color: #606266;
   font-size: 14px;
+}
+
+.user-id {
+  color: #909399 !important;
+  font-size: 12px !important;
+  font-family: 'Courier New', monospace;
+  background: #f5f7fa;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin: 4px 0 !important;
+}
+
+.user-tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
 }
 
 .profile-menu {
