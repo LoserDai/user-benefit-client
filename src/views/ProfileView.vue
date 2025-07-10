@@ -18,8 +18,8 @@
             <p class="user-id">ID: {{ userInfo.id }}</p>
             <p>{{ userInfo.email }}</p>
             <div class="user-tags">
-              <el-tag :type="userInfo.vipLevel === 'VIP' ? 'warning' : 'info'" size="small">
-                {{ userInfo.vipLevel }}
+              <el-tag :type="getUserRoleTagType(userInfo.userRole)" size="small">
+                {{ getUserRoleText(userInfo.userRole) }}
               </el-tag>
               <el-tag :type="getStatusTagType(userInfo.status)" size="small">
                 {{ getStatusText(userInfo.status) }}
@@ -32,21 +32,10 @@
               <el-icon><UserFilled /></el-icon>
               <span>基本信息</span>
             </el-menu-item>
-            <el-menu-item index="security">
-              <el-icon><Lock /></el-icon>
-              <span>账户安全</span>
-            </el-menu-item>
+
             <el-menu-item index="points">
               <el-icon><Coin /></el-icon>
               <span>积分管理</span>
-            </el-menu-item>
-            <el-menu-item index="address">
-              <el-icon><Location /></el-icon>
-              <span>收货地址</span>
-            </el-menu-item>
-            <el-menu-item index="preferences">
-              <el-icon><Setting /></el-icon>
-              <span>偏好设置</span>
             </el-menu-item>
           </el-menu>
         </el-card>
@@ -77,7 +66,7 @@
               <el-radio-group v-model="userInfo.gender">
                 <el-radio label="male">男</el-radio>
                 <el-radio label="female">女</el-radio>
-                <el-radio label="other">其他</el-radio>
+                <el-radio label="other">Alien</el-radio>
               </el-radio-group>
             </el-form-item>
             <el-form-item label="账户状态">
@@ -94,39 +83,6 @@
               </el-button>
             </el-form-item>
           </el-form>
-        </el-card>
-
-        <!-- 账户安全 -->
-        <el-card v-if="activeMenu === 'security'" class="profile-card">
-          <template #header>
-            <h2>账户安全</h2>
-          </template>
-
-          <div class="security-items">
-            <div class="security-item">
-              <div class="security-info">
-                <h3>登录密码</h3>
-                <p>定期更换密码可以保护账户安全</p>
-              </div>
-              <el-button @click="changePassword">修改密码</el-button>
-            </div>
-
-            <div class="security-item">
-              <div class="security-info">
-                <h3>手机绑定</h3>
-                <p>已绑定：{{ userInfo.phone || '未绑定' }}</p>
-              </div>
-              <el-button @click="bindPhone">绑定手机</el-button>
-            </div>
-
-            <div class="security-item">
-              <div class="security-info">
-                <h3>邮箱绑定</h3>
-                <p>已绑定：{{ userInfo.email }}</p>
-              </div>
-              <el-button @click="bindEmail">修改邮箱</el-button>
-            </div>
-          </div>
         </el-card>
 
         <!-- 积分管理 -->
@@ -173,85 +129,6 @@
             </el-table>
           </div>
         </el-card>
-
-        <!-- 收货地址 -->
-        <el-card v-if="activeMenu === 'address'" class="profile-card">
-          <template #header>
-            <div class="card-header">
-              <h2>收货地址</h2>
-              <el-button type="primary" @click="addAddress">新增地址</el-button>
-            </div>
-          </template>
-
-          <div class="address-list">
-            <div v-for="address in addresses" :key="address.id" class="address-item">
-              <div class="address-info">
-                <div class="address-header">
-                  <span class="name">{{ address.name }}</span>
-                  <span class="phone">{{ address.phone }}</span>
-                  <el-tag v-if="address.isDefault" type="success" size="small">默认</el-tag>
-                </div>
-                <p class="address-detail">
-                  {{ address.province }} {{ address.city }} {{ address.district }}
-                  {{ address.detail }}
-                </p>
-              </div>
-              <div class="address-actions">
-                <el-button size="small" @click="editAddress(address)">编辑</el-button>
-                <el-button size="small" type="danger" @click="deleteAddress(address)"
-                  >删除</el-button
-                >
-                <el-button
-                  v-if="!address.isDefault"
-                  size="small"
-                  @click="setDefaultAddress(address)"
-                >
-                  设为默认
-                </el-button>
-              </div>
-            </div>
-          </div>
-        </el-card>
-
-        <!-- 偏好设置 -->
-        <el-card v-if="activeMenu === 'preferences'" class="profile-card">
-          <template #header>
-            <h2>偏好设置</h2>
-          </template>
-
-          <el-form :model="preferences" label-width="120px">
-            <el-form-item label="消息通知">
-              <el-switch v-model="preferences.emailNotification" />
-              <span class="form-tip">邮件通知</span>
-            </el-form-item>
-            <el-form-item label="">
-              <el-switch v-model="preferences.smsNotification" />
-              <span class="form-tip">短信通知</span>
-            </el-form-item>
-            <el-form-item label="">
-              <el-switch v-model="preferences.pushNotification" />
-              <span class="form-tip">推送通知</span>
-            </el-form-item>
-
-            <el-form-item label="隐私设置">
-              <el-checkbox v-model="preferences.showProfile">允许其他用户查看我的资料</el-checkbox>
-            </el-form-item>
-            <el-form-item label="">
-              <el-checkbox v-model="preferences.showOrders">允许其他用户查看我的订单</el-checkbox>
-            </el-form-item>
-
-            <el-form-item label="语言设置">
-              <el-select v-model="preferences.language">
-                <el-option label="简体中文" value="zh-CN" />
-                <el-option label="English" value="en-US" />
-              </el-select>
-            </el-form-item>
-
-            <el-form-item>
-              <el-button type="primary" @click="savePreferences">保存设置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
       </div>
     </div>
   </div>
@@ -277,7 +154,7 @@ const userInfo = ref({
   status: '',
   birthday: '',
   avatar: '',
-  vipLevel: 'VIP',
+  userRole: 0, // 改为数字类型，0表示普通用户，1表示管理员
   points: 0,
   totalPoints: 0,
   usedPoints: 0,
@@ -308,7 +185,7 @@ const fetchCurrentUser = async () => {
         status: response.data.status || '',
         birthday: response.data.birthday || '',
         avatar: response.data.avatar || '',
-        vipLevel: response.data.vipLevel || '普通用户',
+        userRole: response.data.userRole || 0,
         points: response.data.points || 0,
         totalPoints: response.data.totalPoints || 0,
         usedPoints: response.data.usedPoints || 0,
@@ -344,40 +221,6 @@ const pointsHistory = ref([
     type: 'earn',
   },
 ])
-
-// 收货地址
-const addresses = ref([
-  {
-    id: 1,
-    name: '张三',
-    phone: '13800138000',
-    province: '北京市',
-    city: '北京市',
-    district: '朝阳区',
-    detail: '三里屯街道1号',
-    isDefault: true,
-  },
-  {
-    id: 2,
-    name: '李四',
-    phone: '13900139000',
-    province: '上海市',
-    city: '上海市',
-    district: '浦东新区',
-    detail: '陆家嘴街道2号',
-    isDefault: false,
-  },
-])
-
-// 偏好设置
-const preferences = ref({
-  emailNotification: true,
-  smsNotification: false,
-  pushNotification: true,
-  showProfile: true,
-  showOrders: false,
-  language: 'zh-CN',
-})
 
 // 方法
 const handleMenuSelect = (key: string) => {
@@ -442,40 +285,6 @@ const saveBasicInfo = async () => {
   }
 }
 
-const changePassword = () => {
-  ElMessage.info('跳转到修改密码页面')
-}
-
-const bindPhone = () => {
-  ElMessage.info('跳转到绑定手机页面')
-}
-
-const bindEmail = () => {
-  ElMessage.info('跳转到修改邮箱页面')
-}
-
-const addAddress = () => {
-  ElMessage.info('跳转到新增地址页面')
-}
-
-const editAddress = (address: any) => {
-  ElMessage.info(`编辑地址：${address.name}`)
-}
-
-const deleteAddress = (address: any) => {
-  ElMessage.info(`删除地址：${address.name}`)
-}
-
-const setDefaultAddress = (address: any) => {
-  addresses.value.forEach((addr) => (addr.isDefault = false))
-  address.isDefault = true
-  ElMessage.success('默认地址设置成功')
-}
-
-const savePreferences = () => {
-  ElMessage.success('偏好设置保存成功')
-}
-
 // 获取状态文本
 const getStatusText = (status: string) => {
   switch (status) {
@@ -498,6 +307,24 @@ const getStatusTagType = (status: string) => {
     default:
       return 'danger'
   }
+}
+
+// 获取用户角色文本
+const getUserRoleText = (userRole: string | number) => {
+  if (userRole === 0 || userRole === '0') {
+    return '普通用户'
+  } else if (userRole === 1 || userRole === '1') {
+    return '管理员'
+  }
+  return '普通用户'
+}
+
+// 获取用户角色标签类型
+const getUserRoleTagType = (userRole: string | number) => {
+  if (userRole === 1 || userRole === '1') {
+    return 'warning' // 金色标签
+  }
+  return 'info' // 普通标签
 }
 
 // 组件挂载时获取用户信息
@@ -594,32 +421,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.security-items {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.security-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-}
-
-.security-info h3 {
-  margin: 0 0 8px 0;
-  color: #303133;
-}
-
-.security-info p {
-  margin: 0;
-  color: #606266;
-  font-size: 14px;
-}
-
 .points-overview {
   margin-bottom: 30px;
 }
@@ -657,55 +458,6 @@ onMounted(() => {
 .spend {
   color: #f56c6c;
   font-weight: bold;
-}
-
-.address-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.address-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-}
-
-.address-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.name {
-  font-weight: bold;
-  color: #303133;
-}
-
-.phone {
-  color: #606266;
-  font-size: 14px;
-}
-
-.address-detail {
-  margin: 0;
-  color: #606266;
-  font-size: 14px;
-}
-
-.address-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.form-tip {
-  margin-left: 8px;
-  color: #606266;
-  font-size: 14px;
 }
 
 .section {
