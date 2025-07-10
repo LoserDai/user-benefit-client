@@ -7,7 +7,7 @@ interface Banner {
   id: number
   title: string
   description: string
-  buttonText: string
+  // buttonText: string
   image: string
 }
 
@@ -56,21 +56,21 @@ const banners = ref<Banner[]>([
     id: 1,
     title: '新人专享礼包',
     description: '注册即送100积分，新人专享权益等你来拿',
-    buttonText: '立即注册',
+    // buttonText: '立即注册',
     image: '/src/assets/banner_1.png',
   },
   {
     id: 2,
     title: '限时秒杀活动',
     description: '精选商品限时秒杀，错过再等一年',
-    buttonText: '立即抢购',
+    // buttonText: '立即抢购',
     image: '/src/assets/banner_2.png',
   },
   {
     id: 3,
     title: '积分兑换专区',
     description: '积分兑换好礼，让积分更有价值',
-    buttonText: '立即兑换',
+    // buttonText: '立即兑换',
     image: '/src/assets/banner_3.png',
   },
 ])
@@ -254,9 +254,9 @@ const buyFlashSale = (item: FlashSaleItem) => {
           <div class="banner-content">
             <h2>{{ banner.title }}</h2>
             <p>{{ banner.description }}</p>
-            <el-button type="primary" size="large" @click="handleBannerClick(banner)">
-              {{ banner.buttonText }}
-            </el-button>
+            <!-- <el-button type="primary" size="large" @click="handleBannerClick(banner)">
+               {{ banner.buttonText }}
+            </el-button> -->
           </div>
         </div>
       </el-carousel-item>
