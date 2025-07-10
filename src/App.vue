@@ -21,19 +21,19 @@ const currentYear = new Date().getFullYear()
 const isScrolled = ref(false)
 
 // 用户名查重相关
-const usernameChecking = ref(false)
-const usernameExists = ref(false)
-const usernameAvailable = ref(false)
+const accountChecking = ref(false)
+const accountExists = ref(false)
+const accountAvailable = ref(false)
 
 // 登录表单
 const loginForm = reactive({
-  username: '',
+  account: '',
   password: '',
 })
 
 // 注册表单 - 移除邮箱字段
 const registerForm = reactive({
-  username: '',
+  account: '',
   password: '',
   confirmPassword: '',
 })
@@ -44,12 +44,12 @@ const registerFormRef = ref()
 
 // 表单验证规则
 const loginRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  account: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
 
 const registerRules = {
-  username: [
+  account: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
     {
       validator: async (rule: any, value: string, callback: Function) => {
@@ -60,22 +60,24 @@ const registerRules = {
 
         // 检查用户名是否已存在
         try {
-          usernameChecking.value = true
+          accountChecking.value = true
           const response = await userApi.checkUsername(value)
-          console.log(response.data)
-          usernameExists.value = response.data // 假设后端返回 { data: boolean }
-          usernameAvailable.value = !usernameExists.value
-
-          if (usernameExists.value) {
+          // 如果请求成功，说明用户名可用
+          accountExists.value = false
+          accountAvailable.value = true
+          callback()
+        } catch (error: any) {
+          console.error('检查用户名失败:', error)
+          // 如果错误码是40002，说明用户已存在
+          if (error.code === 40002) {
+            accountExists.value = true
+            accountAvailable.value = false
             callback(new Error('用户名已存在'))
           } else {
-            callback()
+            callback(new Error('检查用户名失败，请重试'))
           }
-        } catch (error) {
-          console.error('检查用户名失败:', error)
-          callback(new Error('检查用户名失败，请重试'))
         } finally {
-          usernameChecking.value = false
+          accountChecking.value = false
         }
       },
       trigger: 'blur',
@@ -110,14 +112,14 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
 
     const response = await userApi.login({
-      username: loginForm.username,
+      account: loginForm.account,
       password: loginForm.password,
     })
 
     showMessage('登录成功', 'success')
     isLoggedIn.value = true
     showLoginDialog.value = false
-    loginForm.username = ''
+    loginForm.account = ''
     loginForm.password = ''
   } catch (error: any) {
     if (error.message) {
@@ -134,17 +136,19 @@ const handleRegister = async () => {
     await registerFormRef.value.validate()
 
     const response = await userApi.register({
-      username: registerForm.username,
+      account: registerForm.account,
       password: registerForm.password,
+      checkPassword: registerForm.confirmPassword,
     })
 
     showMessage('注册成功', 'success')
     showRegisterDialog.value = false
-    registerForm.username = ''
+    registerForm.account = ''
     registerForm.password = ''
     registerForm.confirmPassword = ''
-    usernameExists.value = false
-    usernameAvailable.value = false
+    // 重置状态
+    accountExists.value = false
+    accountAvailable.value = false
   } catch (error: any) {
     if (error.message) {
       showMessage(error.message, 'error')
@@ -304,7 +308,7 @@ const handleScroll = () => {
     <el-dialog v-model="showLoginDialog" title="用户登录" width="400px" class="dialog-custom">
       <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="80px">
         <el-form-item prop="username" label="用户名">
-          <el-input v-model="loginForm.username" placeholder="请输入用户名" class="input-custom" />
+          <el-input v-model="loginForm.account" placeholder="请输入用户名" class="input-custom" />
         </el-form-item>
         <el-form-item prop="password" label="密码">
           <el-input
@@ -331,27 +335,32 @@ const handleScroll = () => {
         ref="registerFormRef"
         label-width="80px"
       >
-        <el-form-item prop="username" label="用户名">
+        <el-form-item prop="account" label="用户名">
           <el-input
-            v-model="registerForm.username"
+            v-model="registerForm.account"
             placeholder="请输入用户名"
             class="input-custom"
-            :loading="usernameChecking"
+            :loading="accountChecking"
           >
             <template #suffix>
-              <el-icon v-if="usernameChecking" class="is-loading">
+              <el-icon v-if="accountChecking" class="is-loading">
                 <Loading />
               </el-icon>
-              <el-icon v-else-if="usernameAvailable" style="color: #67c23a">
+              <el-icon v-else-if="accountAvailable" style="color: #67c23a">
                 <CircleCheck />
               </el-icon>
-              <el-icon v-else-if="usernameExists" style="color: #f56c6c">
+              <el-icon v-else-if="accountExists" style="color: #f56c6c">
                 <CircleClose />
               </el-icon>
             </template>
           </el-input>
-          <div v-if="usernameExists" class="username-tip error">用户名已存在，请选择其他用户名</div>
-          <div v-else-if="usernameAvailable" class="username-tip success">用户名可用</div>
+          <div
+            v-if="accountAvailable"
+            class="username-tip success"
+            style="color: #67c23a !important"
+          >
+            用户名可用
+          </div>
         </el-form-item>
         <el-form-item prop="password" label="密码">
           <el-input
@@ -376,7 +385,7 @@ const handleScroll = () => {
           <el-button
             type="primary"
             @click="handleRegister"
-            :disabled="usernameExists || usernameChecking"
+            :disabled="accountExists || accountChecking"
           >
             注册
           </el-button>
@@ -799,5 +808,18 @@ const handleScroll = () => {
 .input-custom:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+/* 用户名提示样式 */
+.username-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  transition: all 0.3s ease;
+}
+
+.username-tip.success {
+  color: #67c23a !important;
+  font-weight: 500;
 }
 </style>

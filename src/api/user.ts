@@ -26,7 +26,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     console.log('收到响应:', response.status, response.data)
-    return response.data
+    const data = response.data
+
+    // 检查业务状态码
+    if (data.code && data.code !== 200) {
+      // 业务错误，抛出异常
+      const error = new Error(data.message || '请求失败') as any
+      error.response = response
+      error.code = data.code
+      return Promise.reject(error)
+    }
+
+    return data
   },
   (error) => {
     console.error('API请求错误:', error)
@@ -49,16 +60,16 @@ api.interceptors.response.use(
 export const userApi = {
   // 检查用户名是否已注册
   checkUsername: (account: string) => {
-    return api.post('/user/isRegister', { account })
+    return api.get(`/user/isRegister?account=${encodeURIComponent(account)}`)
   },
 
   // 用户注册
-  register: (data: { username: string; password: string }) => {
+  register: (data: { account: string; password: string; checkPassword: string }) => {
     return api.post('/user/register', data)
   },
 
   // 用户登录
-  login: (data: { username: string; password: string }) => {
+  login: (data: { account: string; password: string }) => {
     return api.post('/user/login', data)
   },
 }
