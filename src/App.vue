@@ -16,9 +16,47 @@ const showLoginDialog = ref(false)
 const showRegisterDialog = ref(false)
 const cartCount = ref(5) // 增加初始购物车数量
 const isLoggedIn = ref(false)
+const currentUser = ref('') // 当前登录用户名
 const userAvatar = ref('https://picsum.photos/200/200?random=1')
 const currentYear = new Date().getFullYear()
 const isScrolled = ref(false)
+
+// 从本地存储恢复登录状态
+const restoreLoginState = () => {
+  const savedUser = localStorage.getItem('currentUser')
+  const savedLoginState = localStorage.getItem('isLoggedIn')
+
+  if (savedUser && savedLoginState === 'true') {
+    currentUser.value = savedUser
+    isLoggedIn.value = true
+
+    // 可选：验证服务器端登录状态
+    // validateServerLoginState()
+  }
+}
+
+// 验证服务器端登录状态（可选）
+const validateServerLoginState = async () => {
+  try {
+    // 这里可以调用后端接口验证登录状态
+    // const response = await userApi.validateLogin()
+    // if (!response.valid) {
+    //   // 如果服务器端登录已失效，清除本地状态
+    //   clearLoginState()
+    // }
+  } catch (error) {
+    // 如果验证失败，清除本地状态
+    clearLoginState()
+  }
+}
+
+// 清除登录状态
+const clearLoginState = () => {
+  isLoggedIn.value = false
+  currentUser.value = ''
+  localStorage.removeItem('currentUser')
+  localStorage.removeItem('isLoggedIn')
+}
 
 // 用户名查重相关
 const accountChecking = ref(false)
@@ -118,6 +156,12 @@ const handleLogin = async () => {
 
     showMessage('登录成功', 'success')
     isLoggedIn.value = true
+    currentUser.value = loginForm.account // 设置当前登录用户名
+
+    // 保存登录状态到本地存储
+    localStorage.setItem('currentUser', loginForm.account)
+    localStorage.setItem('isLoggedIn', 'true')
+
     showLoginDialog.value = false
     loginForm.account = ''
     loginForm.password = ''
@@ -167,7 +211,7 @@ const handleUserCommand = (command: string) => {
       router.push('/orders')
       break
     case 'logout':
-      isLoggedIn.value = false
+      clearLoginState()
       showMessage('已退出登录', 'success')
       break
   }
@@ -186,6 +230,8 @@ const showMessage = (message: string, type: MessageOptions['type']) => {
 // 滚动监听
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
+  // 恢复登录状态
+  restoreLoginState()
 })
 
 const handleScroll = () => {
@@ -253,7 +299,7 @@ const handleScroll = () => {
                 <el-avatar :size="36" :src="userAvatar" class="user-avatar">
                   <el-icon><User /></el-icon>
                 </el-avatar>
-                <span class="user-name">用户</span>
+                <span class="user-name">{{ currentUser || '用户' }}</span>
               </div>
               <template #dropdown>
                 <el-dropdown-menu class="user-dropdown-menu">
