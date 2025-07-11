@@ -89,6 +89,11 @@ export const userApi = {
   }) => {
     return api.post('/user/update', data)
   },
+
+  // 查询积分和余额
+  queryPoints: () => {
+    return api.post('/points/query')
+  },
 }
 
 // 产品相关接口

@@ -93,22 +93,16 @@
 
           <div class="points-overview">
             <el-row :gutter="20">
-              <el-col :span="8">
+              <el-col :span="12">
                 <div class="points-card">
                   <h3>当前积分</h3>
                   <p class="points-number">{{ userInfo.points }}</p>
                 </div>
               </el-col>
-              <el-col :span="8">
+              <el-col :span="12">
                 <div class="points-card">
-                  <h3>累计获得</h3>
-                  <p class="points-number">{{ userInfo.totalPoints }}</p>
-                </div>
-              </el-col>
-              <el-col :span="8">
-                <div class="points-card">
-                  <h3>已使用</h3>
-                  <p class="points-number">{{ userInfo.usedPoints }}</p>
+                  <h3>账户余额</h3>
+                  <p class="points-number balance-number">¥{{ userInfo.balance }}</p>
                 </div>
               </el-col>
             </el-row>
@@ -156,8 +150,7 @@ const userInfo = ref({
   avatar: '',
   userRole: 0, // 改为数字类型，0表示普通用户，1表示管理员
   points: 0,
-  totalPoints: 0,
-  usedPoints: 0,
+  balance: 0, // 添加余额字段
 })
 
 // 获取当前用户信息
@@ -187,8 +180,7 @@ const fetchCurrentUser = async () => {
         avatar: response.data.avatar || '',
         userRole: response.data.userRole || 0,
         points: response.data.points || 0,
-        totalPoints: response.data.totalPoints || 0,
-        usedPoints: response.data.usedPoints || 0,
+        balance: response.data.balance || 0,
       }
 
       // 保存原始用户名，用于后续比较
@@ -197,6 +189,22 @@ const fetchCurrentUser = async () => {
   } catch (error: any) {
     console.error('获取用户信息失败:', error)
     ElMessage.error('获取用户信息失败，请重新登录')
+  }
+}
+
+// 查询积分和余额
+const fetchPointsAndBalance = async () => {
+  try {
+    const response = await userApi.queryPoints()
+    console.log('查询积分和余额成功:', response)
+
+    if (response.data) {
+      userInfo.value.points = response.data.points || 0
+      userInfo.value.balance = response.data.balance || 0
+    }
+  } catch (error: any) {
+    console.error('查询积分和余额失败:', error)
+    ElMessage.error('查询积分和余额失败，请重试')
   }
 }
 
@@ -225,6 +233,11 @@ const pointsHistory = ref([
 // 方法
 const handleMenuSelect = (key: string) => {
   activeMenu.value = key
+
+  // 当选择积分管理时，调用查询积分和余额接口
+  if (key === 'points') {
+    fetchPointsAndBalance()
+  }
 }
 
 const saveBasicInfo = async () => {
@@ -443,6 +456,10 @@ onMounted(() => {
   font-weight: bold;
   color: #409eff;
   margin: 0;
+}
+
+.balance-number {
+  color: #67c23a;
 }
 
 .points-history h3 {
