@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import HomeView from '../views/client/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,44 +12,44 @@ const router = createRouter({
     {
       path: '/products',
       name: 'products',
-      component: () => import('../views/ProductsView.vue'),
+      component: () => import('../views/client/ProductsView.vue'),
     },
     {
       path: '/packages',
       name: 'packages',
-      component: () => import('../views/PackagesView.vue'),
+      component: () => import('../views/client/PackagesView.vue'),
     },
     {
       path: '/flash-sale',
       name: 'flashSale',
-      component: () => import('../views/FlashSaleView.vue'),
+      component: () => import('../views/client/FlashSaleView.vue'),
     },
     {
       path: '/points',
       name: 'points',
-      component: () => import('../views/PointsView.vue'),
+      component: () => import('../views/client/PointsView.vue'),
     },
     {
       path: '/cart',
       name: 'cart',
-      component: () => import('../views/CartView.vue'),
+      component: () => import('../views/client/CartView.vue'),
     },
     {
       path: '/orders',
       name: 'orders',
-      component: () => import('../views/OrdersView.vue'),
+      component: () => import('../views/client/OrdersView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/profile',
       name: 'profile',
-      component: () => import('../views/ProfileView.vue'),
+      component: () => import('../views/client/ProfileView.vue'),
       meta: { requiresAuth: true },
     },
     {
       path: '/search',
       name: 'search',
-      component: () => import('../views/SearchView.vue'),
+      component: () => import('../views/client/SearchView.vue'),
     },
   ],
 })
