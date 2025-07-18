@@ -149,7 +149,13 @@ const priceRanges = ref([
 const products = ref<any[]>([])
 
 // 获取产品列表
+const isLoading = ref(false)
+
 const fetchProducts = async () => {
+  // 防止重复请求
+  if (isLoading.value) return
+  isLoading.value = true
+
   const params: any = {
     pageNum: currentPage.value,
     pageSize: pageSize.value,
@@ -196,17 +202,31 @@ const fetchProducts = async () => {
     totalProducts.value = res.data?.total || 0
   } catch (e) {
     ElMessage.error('获取产品失败')
+  } finally {
+    isLoading.value = false
   }
 }
 
 // 监听筛选、分页、排序、搜索变化自动请求
 watch(
   [selectedCategory, selectedPriceRange, selectedSort, searchKeyword, currentPage, pageSize],
-  fetchProducts,
+  () => {
+    // 避免在组件初始化时重复调用
+    if (products.value.length > 0 || currentPage.value > 1) {
+      fetchProducts()
+    }
+  },
+  { immediate: false },
 )
 
+// 组件初始化标记
+const isInitialized = ref(false)
+
 onMounted(() => {
-  fetchProducts()
+  if (!isInitialized.value) {
+    fetchProducts()
+    isInitialized.value = true
+  }
 })
 
 // 计算属性
