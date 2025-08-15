@@ -100,14 +100,15 @@ export const userApi = {
 export const productApi = {
   // 查询所有产品
   queryAllProduct: (params: {
-    maxPrice: number
-    minPrice: number
+    maxPrice?: number
+    minPrice?: number
     pageNum: number
     pageSize: number
-    productName: string
-    sortField: string
-    sortOrder: string
-    status: string
+    productName?: string
+    sortField?: string
+    sortOrder?: string
+    status?: string
+    category?: string
   }) => {
     return api.post('/product/queryAllProduct', params)
   },

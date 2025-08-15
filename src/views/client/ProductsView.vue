@@ -10,7 +10,7 @@
     <div class="filter-section">
       <el-row :gutter="20">
         <el-col :span="6">
-          <el-select v-model="selectedCategory" placeholder="选择分类" clearable>
+          <el-select v-model="selectedCategory" placeholder="选择分类" clearable disabled>
             <el-option
               v-for="category in categories"
               :key="category.value"
@@ -67,7 +67,7 @@
               <el-tag :type="product.badgeType">{{ product.badge }}</el-tag>
             </div> -->
             <img
-              :src="product.image || 'https://via.placeholder.com/300x200?text=暂无图片'"
+              :src="product.productImagePath || 'https://via.placeholder.com/300x200?text=暂无图片'"
               :alt="product.productName"
               class="product-image"
             />
@@ -169,7 +169,7 @@ const fetchProducts = async () => {
   if (selectedPriceRange.value) {
     const [min, max] = selectedPriceRange.value.split('-')
     params.minPrice = Number(min)
-    if (max) params.maxPrice = Number(max)
+    if (max && max !== '+') params.maxPrice = Number(max)
   }
   // 排序
   if (selectedSort.value && selectedSort.value !== 'default') {
@@ -198,9 +198,13 @@ const fetchProducts = async () => {
   }
   try {
     const res = await productApi.queryAllProduct(params)
-    products.value = res.data?.list || []
+    console.log('API响应:', res)
+    products.value = res.data?.data || []
     totalProducts.value = res.data?.total || 0
+    console.log('处理后的产品数据:', products.value)
+    console.log('总数:', totalProducts.value)
   } catch (e) {
+    console.error('获取产品失败:', e)
     ElMessage.error('获取产品失败')
   } finally {
     isLoading.value = false
@@ -231,10 +235,8 @@ onMounted(() => {
 
 // 计算属性
 const filteredProducts = computed(() => {
-  // 分类筛选在前端做
-  if (selectedCategory.value) {
-    return products.value.filter((product) => product.category === selectedCategory.value)
-  }
+  // 暂时禁用分类筛选，因为后端数据中没有category字段
+  // TODO: 后续可以根据产品名称或其他字段来实现分类筛选
   return products.value
 })
 
