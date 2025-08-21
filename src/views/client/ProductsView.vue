@@ -9,17 +9,7 @@
     <!-- 筛选和搜索 -->
     <div class="filter-section">
       <el-row :gutter="20">
-        <el-col :span="6">
-          <el-select v-model="selectedCategory" placeholder="选择分类" clearable disabled>
-            <el-option
-              v-for="category in categories"
-              :key="category.value"
-              :label="category.label"
-              :value="category.value"
-            />
-          </el-select>
-        </el-col>
-        <el-col :span="6">
+        <el-col :span="8">
           <el-select v-model="selectedPriceRange" placeholder="价格区间" clearable>
             <el-option
               v-for="range in priceRanges"
@@ -29,7 +19,7 @@
             />
           </el-select>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="8">
           <el-select v-model="selectedSort" placeholder="排序方式" clearable>
             <el-option label="默认排序" value="default" />
             <el-option label="价格从低到高" value="price-asc" />
@@ -38,7 +28,7 @@
             <el-option label="最新上架" value="newest" />
           </el-select>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="8">
           <el-input
             v-model="searchKeyword"
             placeholder="搜索产品..."
@@ -129,22 +119,12 @@ import { BACKEND_CONFIG } from '@/config/backend'
 const router = useRouter()
 
 // 响应式数据
-const selectedCategory = ref('')
 const selectedPriceRange = ref('')
 const selectedSort = ref('default')
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(12)
 const totalProducts = ref(0)
-
-// 分类选项
-const categories = ref([
-  { label: 'VIP会员', value: 'vip' },
-  { label: '流量包', value: 'data' },
-  { label: '话费充值', value: 'phone' },
-  { label: '娱乐服务', value: 'entertainment' },
-  { label: '生活服务', value: 'life' },
-])
 
 // 价格区间选项
 const priceRanges = ref([
@@ -170,10 +150,6 @@ const fetchProducts = async () => {
     pageNum: currentPage.value,
     pageSize: pageSize.value,
     status: 'ACTIVE',
-  }
-  // 分类
-  if (selectedCategory.value) {
-    params.category = selectedCategory.value
   }
   // 价格区间
   if (selectedPriceRange.value) {
@@ -233,7 +209,7 @@ const fetchProducts = async () => {
 
 // 监听筛选、分页、排序、搜索变化自动请求
 watch(
-  [selectedCategory, selectedPriceRange, selectedSort, searchKeyword, currentPage, pageSize],
+  [selectedPriceRange, selectedSort, searchKeyword, currentPage, pageSize],
   () => {
     // 避免在组件初始化时重复调用
     if (products.value.length > 0 || currentPage.value > 1) {
@@ -255,8 +231,6 @@ onMounted(() => {
 
 // 计算属性
 const filteredProducts = computed(() => {
-  // 暂时禁用分类筛选，因为后端数据中没有category字段
-  // TODO: 后续可以根据产品名称或其他字段来实现分类筛选
   return products.value
 })
 
