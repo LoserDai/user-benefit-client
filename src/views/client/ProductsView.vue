@@ -66,11 +66,20 @@
             <!-- <div class="product-badge" v-if="product.badge">
               <el-tag :type="product.badgeType">{{ product.badge }}</el-tag>
             </div> -->
-            <img
-              :src="product.productImagePath || 'https://via.placeholder.com/300x200?text=暂无图片'"
-              :alt="product.productName"
-              class="product-image"
-            />
+            <div class="image-container">
+              <img
+                v-if="product.productImagePath"
+                :src="getImageUrl(product.productImagePath)"
+                :alt="product.productName"
+                class="product-image"
+                @error="handleImageError"
+                @load="handleImageLoad"
+                loading="lazy"
+              />
+              <div v-else class="no-image-placeholder">
+                <span>暂无图片</span>
+              </div>
+            </div>
             <div class="product-info">
               <h3>{{ product.productName }}</h3>
               <p class="product-desc">{{ product.remark || '暂无描述' }}</p>
@@ -115,6 +124,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { productApi } from '@/api/user'
+import { BACKEND_CONFIG } from '@/config/backend'
 
 const router = useRouter()
 
@@ -203,6 +213,16 @@ const fetchProducts = async () => {
     totalProducts.value = res.data?.total || 0
     console.log('处理后的产品数据:', products.value)
     console.log('总数:', totalProducts.value)
+
+    // 调试图片路径
+    products.value.forEach((product, index) => {
+      console.log(`产品 ${index + 1}:`, {
+        id: product.id,
+        name: product.productName,
+        imagePath: product.productImagePath,
+        fullImageUrl: getImageUrl(product.productImagePath),
+      })
+    })
   } catch (e) {
     console.error('获取产品失败:', e)
     ElMessage.error('获取产品失败')
@@ -266,6 +286,25 @@ const handleSizeChange = (size: number) => {
 const handleCurrentChange = (page: number) => {
   currentPage.value = page
 }
+
+// 图片URL处理 - 使用配置文件
+const getImageUrl = (imagePath: string) => {
+  return BACKEND_CONFIG.getImageUrl(imagePath)
+}
+
+// 图片加载处理
+const handleImageLoad = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.log('图片加载成功:', img.src)
+}
+
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.warn('图片加载失败:', img.src)
+
+  // 设置默认图片
+  img.src = 'https://picsum.photos/300/200?text=暂无图片'
+}
 </script>
 
 <style scoped>
@@ -321,11 +360,34 @@ const handleCurrentChange = (page: number) => {
   z-index: 1;
 }
 
-.product-image {
+.image-container {
+  position: relative;
   width: 100%;
   height: 180px;
-  object-fit: cover;
   border-radius: 4px;
+  overflow: hidden;
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.product-image:hover {
+  transform: scale(1.05);
+}
+
+.no-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+  font-size: 14px;
 }
 
 .product-info {

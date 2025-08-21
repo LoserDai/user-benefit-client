@@ -1,8 +1,9 @@
 import axios from 'axios'
+import { API_CONFIG } from '@/config/api'
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: '/api', // 使用代理路径
+  baseURL: API_CONFIG.API_PREFIX, // 使用配置的API前缀
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
