@@ -115,4 +115,24 @@ export const productApi = {
   },
 }
 
+// 权益包相关接口
+export const packageApi = {
+  // 分页查询权益包
+  queryPackage: (params: {
+    id?: number
+    createTime?: string
+    productNames?: string[]
+    pageNum: number
+    pageSize: number
+    price?: number
+    quantity?: number
+    sortField?: string
+    sortOrder?: string
+    remark?: string
+    status?: string
+  }) => {
+    return api.post('/package/queryPackage', params)
+  },
+}
+
 export default api
