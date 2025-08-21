@@ -92,8 +92,24 @@ export const userApi = {
   },
 
   // 查询积分和余额
-  queryPoints: () => {
-    return api.post('/points/query')
+  queryPoints: (ccy: string) => {
+    return api.post(`/points/query?ccy=${encodeURIComponent(ccy)}`)
+  },
+
+  // 获取兑换配置
+  getSwapConfig: (ccy: string) => {
+    return api.get(`/config/getConfig?ccy=${encodeURIComponent(ccy)}`)
+  },
+
+  // 创建兑换订单
+  createSwapOrder: (data: {
+    amountBuy: number
+    amountSell: number
+    ccy: string
+    exchangeFee: number
+    exchangeRate: number
+  }) => {
+    return api.post('/swapOrder/saveSwapOrder', data)
   },
 }
 

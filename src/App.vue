@@ -57,6 +57,9 @@ const clearLoginState = () => {
   currentUser.value = ''
   localStorage.removeItem('currentUser')
   localStorage.removeItem('isLoggedIn')
+
+  // 触发退出登录事件，通知其他组件
+  window.dispatchEvent(new CustomEvent('logoutSuccess'))
 }
 
 // 用户名查重相关
@@ -163,6 +166,13 @@ const handleLogin = async () => {
     localStorage.setItem('currentUser', loginForm.account)
     localStorage.setItem('isLoggedIn', 'true')
 
+    // 触发登录成功事件，通知其他组件
+    window.dispatchEvent(
+      new CustomEvent('loginSuccess', {
+        detail: { username: loginForm.account },
+      }),
+    )
+
     showLoginDialog.value = false
     loginForm.account = ''
     loginForm.password = ''
@@ -224,6 +234,10 @@ const handleUserCommand = (command: string) => {
     case 'logout':
       clearLoginState()
       showMessage('已退出登录', 'success')
+
+      // 触发退出登录事件，通知其他组件
+      window.dispatchEvent(new CustomEvent('logoutSuccess'))
+
       // 退出登录后跳转到主页面
       router.push('/')
       break

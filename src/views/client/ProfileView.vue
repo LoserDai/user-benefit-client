@@ -138,7 +138,7 @@ const activeMenu = ref('basic')
 const isSaving = ref(false) // 保存状态
 const originalAccount = ref('') // 原始用户名，用于比较是否修改
 
-// 用户信息
+// 用户信息 - 支持decimal类型
 const userInfo = ref({
   id: '',
   account: '',
@@ -149,8 +149,8 @@ const userInfo = ref({
   birthday: '',
   avatar: '',
   userRole: 0, // 改为数字类型，0表示普通用户，1表示管理员
-  points: 0,
-  balance: 0, // 添加余额字段
+  points: '0', // 支持decimal类型
+  balance: '0', // 支持decimal类型
 })
 
 // 获取当前用户信息
@@ -179,8 +179,8 @@ const fetchCurrentUser = async () => {
         birthday: response.data.birthday || '',
         avatar: response.data.avatar || '',
         userRole: response.data.userRole || 0,
-        points: response.data.points || 0,
-        balance: response.data.balance || 0,
+        points: String(response.data.points || '0'),
+        balance: String(response.data.balance || '0'),
       }
 
       // 保存原始用户名，用于后续比较
@@ -195,12 +195,14 @@ const fetchCurrentUser = async () => {
 // 查询积分和余额
 const fetchPointsAndBalance = async () => {
   try {
-    const response = await userApi.queryPoints()
+    // 查询积分和余额，传递默认的ccy参数
+    const response = await userApi.queryPoints('B/P')
     console.log('查询积分和余额成功:', response)
 
     if (response.data) {
-      userInfo.value.points = response.data.points || 0
-      userInfo.value.balance = response.data.balance || 0
+      // 支持decimal类型，转换为字符串显示
+      userInfo.value.points = String(response.data.points || '0')
+      userInfo.value.balance = String(response.data.balance || '0')
     }
   } catch (error: any) {
     console.error('查询积分和余额失败:', error)
