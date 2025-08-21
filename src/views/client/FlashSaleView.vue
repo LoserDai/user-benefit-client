@@ -6,71 +6,107 @@
       <p>精选商品限时秒杀，错过再等一年</p>
     </div>
 
-    <!-- 倒计时横幅 -->
-    <div class="countdown-banner">
-      <div class="countdown-content">
-        <h2>距离下一场秒杀还有</h2>
-        <div class="countdown-timer">
-          <div class="time-unit">
-            <span class="time-number">{{ countdown.hours }}</span>
-            <span class="time-label">时</span>
-          </div>
-          <div class="time-separator">:</div>
-          <div class="time-unit">
-            <span class="time-number">{{ countdown.minutes }}</span>
-            <span class="time-label">分</span>
-          </div>
-          <div class="time-separator">:</div>
-          <div class="time-unit">
-            <span class="time-number">{{ countdown.seconds }}</span>
-            <span class="time-label">秒</span>
-          </div>
-        </div>
-      </div>
+    <!-- 筛选和搜索 -->
+    <div class="filter-section">
+      <el-row :gutter="20">
+        <el-col :span="8">
+          <el-input
+            v-model="searchActivityName"
+            placeholder="搜索活动名称..."
+            clearable
+            @keyup.enter="handleSearch"
+          >
+            <template #suffix>
+              <el-icon class="el-input__icon"><Search /></el-icon>
+            </template>
+          </el-input>
+        </el-col>
+        <el-col :span="8">
+          <el-select v-model="selectedActivityType" placeholder="活动类型" clearable>
+            <el-option label="全部类型" value="" />
+            <el-option label="百分比折扣" value="PERCENT_DISCOUNT" />
+            <el-option label="金额折扣" value="AMOUNT_DISCOUNT" />
+            <el-option label="买赠活动" value="GIFT" />
+            <el-option label="限时活动" value="LIMITED" />
+          </el-select>
+        </el-col>
+        <el-col :span="8">
+          <el-input
+            v-model="searchPrice"
+            placeholder="输入价格进行筛选..."
+            type="number"
+            clearable
+            @keyup.enter="handleSearch"
+          >
+            <template #prefix>Coin</template>
+          </el-input>
+        </el-col>
+      </el-row>
+      <!-- 搜索按钮 -->
+      <el-row :gutter="20" style="margin-top: 15px">
+        <el-col :span="24" style="text-align: center">
+          <el-button type="primary" @click="handleSearch" :loading="isLoading"> 搜索 </el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-col>
+      </el-row>
     </div>
 
-    <!-- 秒杀商品列表 -->
+    <!-- 秒杀活动列表 -->
     <div class="flash-sale-grid">
       <el-row :gutter="20">
-        <el-col :span="6" v-for="item in flashSaleItems" :key="item.id">
+        <el-col :span="8" v-for="activity in flashSaleActivities" :key="activity.id">
           <el-card class="flash-sale-card">
             <div class="flash-sale-header">
-              <el-tag type="danger" size="large">限时秒杀</el-tag>
+              <el-tag :type="getActivityTypeColor(activity.activityType)" size="large">{{
+                getActivityTypeText(activity.activityType)
+              }}</el-tag>
               <div class="item-countdown">
-                <span>{{ item.countdown }}</span>
+                <span>{{ activityCountdowns[activity.id] || '00:00:00' }}</span>
               </div>
             </div>
-            <img :src="item.image" :alt="item.name" class="flash-sale-image" />
+
+            <!-- 活动图片 -->
+            <div class="image-container">
+              <img
+                v-if="activity.activityImagePath"
+                :src="getImageUrl(activity.activityImagePath)"
+                :alt="activity.activityName || '秒杀活动'"
+                class="flash-sale-image"
+                @error="handleImageError"
+                @load="handleImageLoad"
+                loading="lazy"
+              />
+              <div v-else class="no-image-placeholder">
+                <span>暂无图片</span>
+              </div>
+            </div>
+
             <div class="flash-sale-info">
-              <h3>{{ item.name }}</h3>
-              <p class="item-desc">{{ item.description }}</p>
+              <h3>{{ activity.activityName || '秒杀活动' }}</h3>
+              <p class="item-desc">{{ activity.description || '暂无描述' }}</p>
+
               <div class="flash-sale-price">
-                <span class="current-price">¥{{ item.currentPrice }}</span>
-                <span class="original-price">¥{{ item.originalPrice }}</span>
-                <span class="discount">{{ item.discount }}折</span>
+                <span class="current-price">Coin: {{ activity.price || 0 }}</span>
+                <span v-if="activity.discountValue" class="discount"
+                  >{{ activity.discountValue }}折</span
+                >
               </div>
-              <div class="flash-sale-progress">
-                <div class="progress-info">
-                  <span>已售{{ item.soldCount }}/{{ item.totalCount }}</span>
-                  <span>剩余{{ item.remainingCount }}</span>
-                </div>
-                <el-progress
-                  :percentage="item.soldPercentage"
-                  :stroke-width="8"
-                  :show-text="false"
-                  color="#f56c6c"
-                />
+
+              <div class="activity-meta">
+                <span class="meta-item">开始: {{ formatTime(activity.startTime) }}</span>
+                <span class="meta-item">结束: {{ formatTime(activity.endTime) }}</span>
               </div>
+
               <div class="flash-sale-actions">
                 <el-button
                   type="danger"
                   size="large"
-                  :disabled="item.remainingCount === 0"
-                  @click="buyFlashSale(item)"
+                  :disabled="!isActivityActive(activity)"
+                  @click="buyFlashSale(activity)"
                 >
-                  {{ item.remainingCount === 0 ? '已售罄' : '立即抢购' }}
+                  {{ isActivityActive(activity) ? '立即抢购' : '活动结束' }}
                 </el-button>
-                <el-button @click="addToCart(item)"> 加入购物车 </el-button>
+                <el-button @click="addToCart(activity)"> 加入购物车 </el-button>
               </div>
             </div>
           </el-card>
@@ -78,195 +114,280 @@
       </el-row>
     </div>
 
-    <!-- 即将开始 -->
-    <div class="upcoming-section">
-      <h2>即将开始</h2>
-      <el-row :gutter="20">
-        <el-col :span="6" v-for="item in upcomingItems" :key="item.id">
-          <el-card class="upcoming-card">
-            <div class="upcoming-header">
-              <el-tag type="warning">即将开始</el-tag>
-              <div class="start-time">{{ item.startTime }}</div>
-            </div>
-            <img :src="item.image" :alt="item.name" class="upcoming-image" />
-            <div class="upcoming-info">
-              <h3>{{ item.name }}</h3>
-              <div class="upcoming-price">
-                <span class="current-price">¥{{ item.currentPrice }}</span>
-                <span class="original-price">¥{{ item.originalPrice }}</span>
-              </div>
-              <el-button type="warning" size="small" @click="setReminder(item)">
-                设置提醒
-              </el-button>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
+    <!-- 分页 -->
+    <div class="pagination-section">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[6, 12, 18, 24]"
+        :total="totalActivities"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="loading-section">
+      <el-skeleton :rows="3" animated />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
+import { activityApi } from '@/api/user'
+import { BACKEND_CONFIG } from '@/config/backend'
 
-// 响应式数据
-const countdown = ref({
-  hours: '00',
-  minutes: '00',
-  seconds: '00',
+const router = useRouter()
+
+// 筛选和分页数据
+const searchActivityName = ref('')
+const selectedActivityType = ref('')
+const searchPrice = ref('')
+const currentPage = ref(1)
+const pageSize = ref(6)
+const totalActivities = ref(0)
+const isLoading = ref(false)
+
+// 秒杀活动数据
+const flashSaleActivities = ref<any[]>([])
+const activityCountdowns = ref<{ [key: number]: string }>({})
+
+// 获取秒杀活动列表
+const fetchActivities = async () => {
+  if (isLoading.value) return
+  isLoading.value = true
+
+  const params: any = {
+    pageNum: currentPage.value,
+    pageSize: pageSize.value,
+    status: 'ONGOING', // 只查询进行中的活动
+  }
+
+  // 活动名称搜索
+  if (searchActivityName.value && searchActivityName.value.trim() !== '') {
+    params.activityName = searchActivityName.value.trim()
+  }
+
+  // 活动类型筛选
+  if (selectedActivityType.value && selectedActivityType.value.trim() !== '') {
+    params.activityType = selectedActivityType.value
+  }
+
+  // 价格筛选
+  if (searchPrice.value && searchPrice.value.trim() !== '') {
+    params.price = Number(searchPrice.value)
+  }
+
+  try {
+    const res = await activityApi.queryActivityList(params)
+    console.log('秒杀活动API响应:', res)
+    flashSaleActivities.value = res.data?.data || []
+    totalActivities.value = res.data?.total || 0
+
+    // 初始化所有活动的倒计时
+    updateAllActivityCountdowns()
+
+    console.log('处理后的秒杀活动数据:', flashSaleActivities.value)
+    console.log('总数:', totalActivities.value)
+  } catch (e) {
+    console.error('获取秒杀活动失败:', e)
+    ElMessage.error('获取秒杀活动失败')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 监听分页变化自动请求
+watch(
+  [currentPage, pageSize],
+  () => {
+    if (flashSaleActivities.value.length > 0 || currentPage.value > 1) {
+      fetchActivities()
+    }
+  },
+  { immediate: false },
+)
+
+// 监听筛选条件变化，自动搜索（带防抖）
+let searchTimer: number | null = null
+watch(
+  [searchActivityName, selectedActivityType, searchPrice],
+  () => {
+    // 清除之前的定时器
+    if (searchTimer) {
+      clearTimeout(searchTimer)
+    }
+
+    // 设置新的定时器，500ms后自动搜索
+    searchTimer = setTimeout(() => {
+      if (flashSaleActivities.value.length > 0) {
+        currentPage.value = 1
+        fetchActivities()
+      }
+    }, 500)
+  },
+  { immediate: false },
+)
+
+// 组件初始化标记
+const isInitialized = ref(false)
+
+onMounted(() => {
+  if (!isInitialized.value) {
+    fetchActivities()
+    isInitialized.value = true
+  }
 })
 
-let countdownTimer: number | null = null
-
-// 秒杀商品数据
-const flashSaleItems = ref([
-  {
-    id: 1,
-    name: 'VIP会员年卡',
-    description: '年度VIP会员，享受全年专属服务',
-    image: 'https://via.placeholder.com/300x200/409eff/ffffff?text=VIP年卡',
-    currentPrice: 299,
-    originalPrice: 399,
-    discount: 7.5,
-    countdown: '02:30:15',
-    soldCount: 75,
-    totalCount: 100,
-    remainingCount: 25,
-    soldPercentage: 75,
-  },
-  {
-    id: 2,
-    name: '流量包20GB',
-    description: '大容量流量包，适合重度用户',
-    image: 'https://via.placeholder.com/300x200/67c23a/ffffff?text=流量包20GB',
-    currentPrice: 29.9,
-    originalPrice: 49.9,
-    discount: 6.0,
-    countdown: '01:45:30',
-    soldCount: 60,
-    totalCount: 100,
-    remainingCount: 40,
-    soldPercentage: 60,
-  },
-  {
-    id: 3,
-    name: '话费充值200元',
-    description: '话费充值立享优惠，到账快速',
-    image: 'https://via.placeholder.com/300x200/e6a23c/ffffff?text=话费200元',
-    currentPrice: 180,
-    originalPrice: 200,
-    discount: 9.0,
-    countdown: '00:30:45',
-    soldCount: 85,
-    totalCount: 100,
-    remainingCount: 15,
-    soldPercentage: 85,
-  },
-  {
-    id: 4,
-    name: '电影票券5张',
-    description: '全国影院通用电影票，支持在线选座',
-    image: 'https://via.placeholder.com/300x200/f56c6c/ffffff?text=电影票5张',
-    currentPrice: 150,
-    originalPrice: 225,
-    discount: 6.7,
-    countdown: '03:15:20',
-    soldCount: 45,
-    totalCount: 100,
-    remainingCount: 55,
-    soldPercentage: 45,
-  },
-])
-
-// 即将开始的商品
-const upcomingItems = ref([
-  {
-    id: 5,
-    name: 'KTV欢唱券',
-    description: '全国连锁KTV通用，支持在线预约',
-    image: 'https://via.placeholder.com/300x200/909399/ffffff?text=KTV券',
-    currentPrice: 88,
-    originalPrice: 128,
-    startTime: '20:00',
-  },
-  {
-    id: 6,
-    name: '美食优惠券',
-    description: '全国知名餐厅通用优惠券',
-    image: 'https://via.placeholder.com/300x200/67c23a/ffffff?text=美食券',
-    currentPrice: 50,
-    originalPrice: 80,
-    startTime: '21:00',
-  },
-  {
-    id: 7,
-    name: '游戏充值券',
-    description: '热门游戏充值券，支持多款游戏',
-    image: 'https://via.placeholder.com/300x200/409eff/ffffff?text=游戏券',
-    currentPrice: 100,
-    originalPrice: 150,
-    startTime: '22:00',
-  },
-  {
-    id: 8,
-    name: '健身月卡',
-    description: '全国连锁健身房通用月卡',
-    image: 'https://via.placeholder.com/300x200/e6a23c/ffffff?text=健身卡',
-    currentPrice: 199,
-    originalPrice: 299,
-    startTime: '23:00',
-  },
-])
-
-// 倒计时逻辑
-const updateCountdown = () => {
-  // 这里应该根据实际的下场秒杀时间计算
-  // 现在使用模拟数据
-  const now = new Date()
-  const target = new Date(now.getTime() + 2 * 60 * 60 * 1000) // 2小时后
-  const diff = target.getTime() - now.getTime()
-
-  if (diff > 0) {
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-
-    countdown.value = {
-      hours: hours.toString().padStart(2, '0'),
-      minutes: minutes.toString().padStart(2, '0'),
-      seconds: seconds.toString().padStart(2, '0'),
-    }
-  }
-}
-
 // 方法
-const buyFlashSale = (item: any) => {
-  if (item.remainingCount > 0) {
-    ElMessage.success(`正在抢购: ${item.name}`)
-    item.remainingCount--
-    item.soldCount++
-    item.soldPercentage = Math.round((item.soldCount / item.totalCount) * 100)
+const handleSearch = () => {
+  currentPage.value = 1
+  fetchActivities()
+  ElMessage.success('搜索完成')
+}
+
+const handleReset = () => {
+  searchActivityName.value = ''
+  selectedActivityType.value = ''
+  searchPrice.value = ''
+  currentPage.value = 1
+  fetchActivities()
+  ElMessage.success('筛选条件已重置')
+}
+
+const buyFlashSale = (activity: any) => {
+  if (isActivityActive(activity)) {
+    ElMessage.success(`正在抢购: ${activity.activityName || '秒杀活动'}`)
   }
 }
 
-const addToCart = (item: any) => {
-  ElMessage.success(`已将 ${item.name} 加入购物车`)
+const addToCart = (activity: any) => {
+  ElMessage.success(`已将 ${activity.activityName || '秒杀活动'} 加入购物车`)
 }
 
-const setReminder = (item: any) => {
-  ElMessage.success(`已设置 ${item.name} 的秒杀提醒`)
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (page: number) => {
+  currentPage.value = page
+}
+
+// 工具方法
+const getRemainingTime = (endTime: string) => {
+  if (!endTime) return '00:00:00'
+
+  const now = new Date()
+  const end = new Date(endTime)
+  const diff = end.getTime() - now.getTime()
+
+  if (diff <= 0) return '已结束'
+
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+}
+
+// 活动类型转换
+const getActivityTypeText = (activityType: string) => {
+  const typeMap: { [key: string]: string } = {
+    PERCENT_DISCOUNT: '百分比折扣',
+    AMOUNT_DISCOUNT: '金额折扣',
+    GIFT: '买赠活动',
+  }
+  return typeMap[activityType] || '百分比折扣'
+}
+
+// 活动类型颜色映射
+const getActivityTypeColor = (activityType: string) => {
+  const colorMap: { [key: string]: string } = {
+    PERCENT_DISCOUNT: 'success', // 绿色 - 折扣活动
+    AMOUNT_DISCOUNT: 'warning', // 橙色 - 金额折扣
+    GIFT: 'primary', // 蓝色 - 买赠活动
+    LIMITED: 'danger', // 红色 - 限时活动
+    DISCOUNT: 'info', // 灰色 - 其他折扣
+  }
+  return colorMap[activityType] || 'danger'
+}
+
+// 更新所有活动的倒计时
+const updateAllActivityCountdowns = () => {
+  flashSaleActivities.value.forEach((activity) => {
+    if (activity.endTime) {
+      const now = new Date()
+      const end = new Date(activity.endTime)
+      const diff = end.getTime() - now.getTime()
+
+      if (diff <= 0) {
+        activityCountdowns.value[activity.id] = '已结束'
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60))
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+        activityCountdowns.value[activity.id] =
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      }
+    } else {
+      activityCountdowns.value[activity.id] = '00:00:00'
+    }
+  })
+}
+
+const formatTime = (timeStr: string) => {
+  if (!timeStr) return '--'
+  const date = new Date(timeStr)
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`
+}
+
+const isActivityActive = (activity: any) => {
+  if (!activity.startTime || !activity.endTime) return false
+
+  const now = new Date()
+  const start = new Date(activity.startTime)
+  const end = new Date(activity.endTime)
+
+  return now >= start && now <= end
+}
+
+// 图片URL处理
+const getImageUrl = (imagePath: string) => {
+  return BACKEND_CONFIG.getImageUrl(imagePath)
+}
+
+// 图片加载处理
+const handleImageLoad = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.log('图片加载成功:', img.src)
+}
+
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.warn('图片加载失败:', img.src)
+  img.src = 'https://picsum.photos/300/200?text=暂无图片'
 }
 
 // 生命周期
 onMounted(() => {
-  updateCountdown()
-  countdownTimer = setInterval(updateCountdown, 1000)
+  // 初始化所有活动的倒计时
+  const timer = setInterval(updateAllActivityCountdowns, 1000)
+
+  onUnmounted(() => {
+    clearInterval(timer)
+  })
 })
 
 onUnmounted(() => {
-  if (countdownTimer) {
-    clearInterval(countdownTimer)
+  if (searchTimer) {
+    clearTimeout(searchTimer)
   }
 })
 </script>
@@ -292,52 +413,37 @@ onUnmounted(() => {
   color: #606266;
 }
 
-.countdown-banner {
-  background: linear-gradient(135deg, #f56c6c 0%, #e6a23c 100%);
-  color: white;
-  padding: 40px;
+.filter-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f5f7fa;
   border-radius: 8px;
-  margin-bottom: 40px;
+  border: 1px solid #e4e7ed;
+}
+
+.filter-section .el-row {
+  margin-bottom: 0;
+}
+
+.filter-section .el-col {
+  margin-bottom: 10px;
+}
+
+.filter-section .el-input,
+.filter-section .el-select {
+  width: 100%;
+}
+
+.filter-section .el-button {
+  margin-right: 10px;
+  min-width: 100px;
+}
+
+.filter-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
   text-align: center;
-}
-
-.countdown-content h2 {
-  margin: 0 0 20px 0;
-  font-size: 24px;
-}
-
-.countdown-timer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-}
-
-.time-unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.time-number {
-  font-size: 48px;
-  font-weight: bold;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 10px 15px;
-  border-radius: 8px;
-  min-width: 60px;
-  text-align: center;
-}
-
-.time-label {
-  font-size: 16px;
-  margin-top: 8px;
-}
-
-.time-separator {
-  font-size: 48px;
-  font-weight: bold;
-  margin-top: -20px;
 }
 
 .flash-sale-grid {
@@ -347,8 +453,10 @@ onUnmounted(() => {
 .flash-sale-card {
   cursor: pointer;
   transition: all 0.3s;
-  height: 450px;
+  min-height: 480px;
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .flash-sale-card:hover {
@@ -363,24 +471,68 @@ onUnmounted(() => {
   margin-bottom: 12px;
 }
 
+.flash-sale-header .el-tag {
+  font-weight: 600;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 .item-countdown {
   font-size: 14px;
   color: #f56c6c;
   font-weight: bold;
+  background: rgba(245, 108, 108, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 108, 108, 0.3);
+}
+
+.image-container {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  margin-bottom: 12px;
 }
 
 .flash-sale-image {
   width: 100%;
-  height: 150px;
+  height: 100%;
   object-fit: cover;
-  border-radius: 4px;
-  margin-bottom: 12px;
+  transition: transform 0.3s ease;
+}
+
+.flash-sale-image:hover {
+  transform: scale(1.05);
+}
+
+.no-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+  font-size: 14px;
+}
+
+.flash-sale-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
 }
 
 .flash-sale-info h3 {
   margin: 0 0 8px 0;
   font-size: 16px;
   color: #303133;
+  height: 40px;
+  overflow: hidden;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 .item-desc {
@@ -389,12 +541,14 @@ onUnmounted(() => {
   margin-bottom: 12px;
   height: 40px;
   overflow: hidden;
+  line-height: 1.5;
 }
 
 .flash-sale-price {
   margin-bottom: 12px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -402,12 +556,6 @@ onUnmounted(() => {
   font-size: 20px;
   font-weight: bold;
   color: #f56c6c;
-}
-
-.original-price {
-  font-size: 14px;
-  color: #c0c4cc;
-  text-decoration: line-through;
 }
 
 .discount {
@@ -418,82 +566,49 @@ onUnmounted(() => {
   border-radius: 4px;
 }
 
-.flash-sale-progress {
-  margin-bottom: 12px;
+.activity-meta {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.progress-info {
-  display: flex;
-  justify-content: space-between;
+.meta-item {
   font-size: 12px;
   color: #909399;
-  margin-bottom: 4px;
+  text-align: center;
 }
 
 .flash-sale-actions {
   display: flex;
   gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  justify-content: center;
 }
 
-.upcoming-section {
+.flash-sale-actions .el-button {
+  flex: 1;
+  max-width: 120px;
+  height: 36px;
+  font-weight: 500;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.flash-sale-actions .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pagination-section {
+  display: flex;
+  justify-content: center;
   margin-top: 40px;
 }
 
-.upcoming-section h2 {
-  font-size: 24px;
-  color: #303133;
-  margin-bottom: 20px;
-}
-
-.upcoming-card {
-  cursor: pointer;
-  transition: all 0.3s;
-  height: 300px;
-  margin-bottom: 20px;
-}
-
-.upcoming-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-}
-
-.upcoming-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.start-time {
-  font-size: 14px;
-  color: #e6a23c;
-  font-weight: bold;
-}
-
-.upcoming-image {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 4px;
-  margin-bottom: 12px;
-}
-
-.upcoming-info h3 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  color: #303133;
-}
-
-.upcoming-price {
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.section {
-  margin-bottom: 48px;
-  padding-left: 8px;
-  padding-right: 8px;
+.loading-section {
+  margin: 40px 0;
+  padding: 20px;
 }
 </style>

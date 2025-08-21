@@ -136,4 +136,29 @@ export const packageApi = {
   },
 }
 
+// 秒杀活动相关接口
+export const activityApi = {
+  // 分页查询秒杀活动
+  queryActivityList: (params: {
+    activityName?: string
+    activityType?: string
+    createTime?: string
+    description?: string
+    discountValue?: number
+    endTime?: string
+    id?: number
+    minPurchase?: number
+    packageIds?: string[]
+    pageNum: number
+    pageSize: number
+    price?: number
+    purchaseLimit?: number
+    remark?: string
+    startTime?: string
+    status: string
+  }) => {
+    return api.post('/activity/queryActivityList', params)
+  },
+}
+
 export default api
