@@ -312,8 +312,6 @@ const getActivityTypeColor = (activityType: string) => {
     PERCENT_DISCOUNT: 'success', // 绿色 - 折扣活动
     AMOUNT_DISCOUNT: 'warning', // 橙色 - 金额折扣
     GIFT: 'primary', // 蓝色 - 买赠活动
-    LIMITED: 'danger', // 红色 - 限时活动
-    DISCOUNT: 'info', // 灰色 - 其他折扣
   }
   return colorMap[activityType] || 'danger'
 }

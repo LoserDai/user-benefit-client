@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { productApi, packageApi, activityApi } from '@/api/user'
+import { BACKEND_CONFIG } from '@/config/backend'
 
 interface Banner {
   id: number
@@ -106,112 +108,14 @@ const quickAccess = ref<QuickAccessItem[]>([
   },
 ])
 
-const hotProducts = ref<Product[]>([
-  {
-    id: 1,
-    name: 'VIP会员月卡',
-    description: '享受专属权益和服务',
-    image: 'https://picsum.photos/300/300?random=5',
-    currentPrice: 29.9,
-    originalPrice: 39.9,
-  },
-  {
-    id: 2,
-    name: '流量包10GB',
-    description: '全国通用流量包',
-    image: 'https://via.placeholder.com/300x200/67c23a/ffffff?text=流量包',
-    currentPrice: 19.9,
-    originalPrice: 25.9,
-  },
-  {
-    id: 3,
-    name: '话费充值100元',
-    description: '话费充值立享优惠',
-    image: 'https://via.placeholder.com/300x200/e6a23c/ffffff?text=话费充值',
-    currentPrice: 95,
-    originalPrice: 100,
-  },
-  {
-    id: 4,
-    name: '电影票券',
-    description: '全国影院通用电影票',
-    image: 'https://via.placeholder.com/300x200/f56c6c/ffffff?text=电影票',
-    currentPrice: 35,
-    originalPrice: 45,
-  },
-])
+const hotProducts = ref<any[]>([])
+const isLoadingHotProducts = ref(false)
 
-const recommendedPackages = ref<PackageItem[]>([
-  {
-    id: 1,
-    name: '新人专享包',
-    tag: '新人专享',
-    tagType: 'success',
-    description: '专为新用户打造的权益组合包',
-    features: ['VIP会员月卡', '流量包5GB', '话费充值50元'],
-    currentPrice: 79.9,
-    originalPrice: 129.9,
-  },
-  {
-    id: 2,
-    name: '娱乐生活包',
-    tag: '热门推荐',
-    tagType: 'warning',
-    description: '涵盖娱乐生活的全方位权益',
-    features: ['电影票券2张', 'KTV欢唱券', '美食优惠券'],
-    currentPrice: 99.9,
-    originalPrice: 159.9,
-  },
-  {
-    id: 3,
-    name: '通讯服务包',
-    tag: '限时特惠',
-    tagType: 'danger',
-    description: '通讯服务一站式解决方案',
-    features: ['话费充值100元', '流量包10GB', '短信包100条'],
-    currentPrice: 119.9,
-    originalPrice: 189.9,
-  },
-])
+const recommendedPackages = ref<any[]>([])
+const isLoadingPackages = ref(false)
 
-const flashSaleItems = ref<FlashSaleItem[]>([
-  {
-    id: 1,
-    name: 'VIP会员年卡',
-    image: 'https://via.placeholder.com/300x200/409eff/ffffff?text=VIP年卡',
-    currentPrice: 299,
-    originalPrice: 399,
-    countdown: '02:30:15',
-    soldPercentage: 75,
-  },
-  {
-    id: 2,
-    name: '流量包20GB',
-    image: 'https://via.placeholder.com/300x200/67c23a/ffffff?text=流量包20GB',
-    currentPrice: 29.9,
-    originalPrice: 49.9,
-    countdown: '01:45:30',
-    soldPercentage: 60,
-  },
-  {
-    id: 3,
-    name: '话费充值200元',
-    image: 'https://via.placeholder.com/300x200/e6a23c/ffffff?text=话费200元',
-    currentPrice: 180,
-    originalPrice: 200,
-    countdown: '00:30:45',
-    soldPercentage: 85,
-  },
-  {
-    id: 4,
-    name: '电影票券5张',
-    image: 'https://via.placeholder.com/300x200/f56c6c/ffffff?text=电影票5张',
-    currentPrice: 150,
-    originalPrice: 225,
-    countdown: '03:15:20',
-    soldPercentage: 45,
-  },
-])
+const flashSaleItems = ref<any[]>([])
+const isLoadingFlashSale = ref(false)
 
 const handleBannerClick = (banner: Banner) => {
   ElMessage.success(`点击了: ${banner.title}`)
@@ -221,28 +125,182 @@ const handleQuickAccess = (item: QuickAccessItem) => {
   router.push(item.route)
 }
 
-const handleProductClick = (product: Product) => {
+const handleProductClick = (product: any) => {
   router.push(`/products/${product.id}`)
 }
 
-const addToCart = (product: Product) => {
-  ElMessage.success(`已将 ${product.name} 加入购物车`)
+const addToCart = (product: any) => {
+  ElMessage.success(`已将 ${product.productName || '权益产品'} 加入购物车`)
 }
 
-const handlePackageClick = (pkg: PackageItem) => {
+const buyNow = (product: any) => {
+  ElMessage.success(`正在购买: ${product.productName || '权益产品'}`)
+}
+
+const handlePackageClick = (pkg: any) => {
   router.push(`/packages/${pkg.id}`)
 }
 
-const buyPackage = (pkg: PackageItem) => {
-  ElMessage.success(`正在购买: ${pkg.name}`)
+const buyPackage = (pkg: any) => {
+  ElMessage.success(`正在购买: ${pkg.packageName || pkg.remark || '权益包'}`)
 }
 
-const handleFlashSaleClick = (item: FlashSaleItem) => {
+const handleFlashSaleClick = (item: any) => {
   router.push(`/flash-sale/${item.id}`)
 }
 
-const buyFlashSale = (item: FlashSaleItem) => {
-  ElMessage.success(`正在抢购: ${item.name}`)
+const buyFlashSale = (item: any) => {
+  ElMessage.success(`正在抢购: ${item.activityName || '秒杀活动'}`)
+}
+
+// 获取热门权益产品
+const fetchHotProducts = async () => {
+  if (isLoadingHotProducts.value) return
+  isLoadingHotProducts.value = true
+
+  try {
+    const params = {
+      pageNum: 1,
+      pageSize: 4,
+      status: 'ACTIVE',
+    }
+
+    const res = await productApi.queryAllProduct(params)
+    console.log('热门产品API响应:', res)
+    hotProducts.value = res.data?.data || []
+    console.log('处理后的热门产品数据:', hotProducts.value)
+  } catch (e) {
+    console.error('获取热门产品失败:', e)
+    ElMessage.error('获取热门产品失败')
+  } finally {
+    isLoadingHotProducts.value = false
+  }
+}
+
+// 获取推荐权益包
+const fetchRecommendedPackages = async () => {
+  if (isLoadingPackages.value) return
+  isLoadingPackages.value = true
+
+  try {
+    const params = {
+      pageNum: 1,
+      pageSize: 3,
+      status: 'ACTIVE',
+    }
+
+    const res = await packageApi.queryPackage(params)
+    console.log('推荐权益包API响应:', res)
+    recommendedPackages.value = res.data?.data || []
+    console.log('处理后的推荐权益包数据:', recommendedPackages.value)
+  } catch (e) {
+    console.error('获取推荐权益包失败:', e)
+    ElMessage.error('获取推荐权益包失败')
+  } finally {
+    isLoadingPackages.value = false
+  }
+}
+
+// 获取限时秒杀活动
+const fetchFlashSaleActivities = async () => {
+  if (isLoadingFlashSale.value) return
+  isLoadingFlashSale.value = true
+
+  try {
+    const params = {
+      pageNum: 1,
+      pageSize: 4,
+      status: 'ONGOING',
+    }
+
+    const res = await activityApi.queryActivityList(params)
+    console.log('限时秒杀API响应:', res)
+    flashSaleItems.value = res.data?.data || []
+    console.log('处理后的限时秒杀数据:', flashSaleItems.value)
+  } catch (e) {
+    console.error('获取限时秒杀失败:', e)
+    ElMessage.error('获取限时秒杀失败')
+  } finally {
+    isLoadingFlashSale.value = false
+  }
+}
+
+// 组件挂载时获取热门产品、推荐权益包和限时秒杀
+onMounted(() => {
+  fetchHotProducts()
+  fetchRecommendedPackages()
+  fetchFlashSaleActivities()
+})
+
+// 图片URL处理
+const getImageUrl = (imagePath: string) => {
+  return BACKEND_CONFIG.getImageUrl(imagePath)
+}
+
+// 图片加载处理
+const handleImageLoad = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.log('图片加载成功:', img.src)
+}
+
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.warn('图片加载失败:', img.src)
+  // 设置默认图片
+  img.src = 'https://picsum.photos/300/200?text=暂无图片'
+}
+
+// 工具方法
+const getRemainingTime = (endTime: string) => {
+  if (!endTime) return '00:00:00'
+
+  const now = new Date()
+  const end = new Date(endTime)
+  const diff = end.getTime() - now.getTime()
+
+  if (diff <= 0) return '已结束'
+
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+}
+
+const formatTime = (timeStr: string) => {
+  if (!timeStr) return '--'
+  const date = new Date(timeStr)
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`
+}
+
+// 统一的查看更多处理函数
+const handleViewMore = (route: string) => {
+  console.log('=== 路由跳转调试信息 ===')
+  console.log('当前路由:', router.currentRoute.value.path)
+  console.log('目标路由:', `/${route}`)
+  console.log('路由实例:', router)
+
+  // 使用 router.push 而不是 replace，保持正确的浏览器历史记录
+  try {
+    console.log('尝试使用 router.push 跳转...')
+    router
+      .push(`/${route}`)
+      .then(() => {
+        console.log('路由跳转成功')
+      })
+      .catch((error) => {
+        console.error('router.push 失败:', error)
+        // 如果路由跳转失败，使用 window.location
+        console.log('使用 window.location 跳转...')
+        window.location.href = `/${route}`
+      })
+  } catch (error) {
+    console.error('路由跳转异常:', error)
+
+    // 如果路由跳转失败，使用 window.location
+    console.log('使用 window.location 跳转...')
+    window.location.href = `/${route}`
+  }
 }
 </script>
 
@@ -280,97 +338,171 @@ const buyFlashSale = (item: FlashSaleItem) => {
 
     <div class="section">
       <div class="section-header">
-        <h2>热门商品</h2>
-        <el-button text @click="$router.push('/products')">
+        <h2>热门权益产品</h2>
+        <el-button text @click="handleViewMore('products')">
           查看更多 <el-icon><ArrowRight /></el-icon>
         </el-button>
       </div>
-      <el-row :gutter="20">
+
+      <!-- 加载状态 -->
+      <div v-if="isLoadingHotProducts" class="loading-section">
+        <el-skeleton :rows="3" animated />
+      </div>
+
+      <!-- 产品列表 -->
+      <el-row v-else :gutter="20">
         <el-col :span="6" v-for="product in hotProducts" :key="product.id">
           <el-card class="product-card" @click="handleProductClick(product)">
-            <img :src="product.image" :alt="product.name" class="product-image" />
-            <div class="product-info">
-              <h3>{{ product.name }}</h3>
-              <p class="product-desc">{{ product.description }}</p>
-              <div class="product-price">
-                <span class="current-price">¥{{ product.currentPrice }}</span>
-                <span class="original-price" v-if="product.originalPrice"
-                  >¥{{ product.originalPrice }}</span
-                >
+            <!-- 产品图片 -->
+            <div class="image-container">
+              <img
+                v-if="product.productImagePath"
+                :src="getImageUrl(product.productImagePath)"
+                :alt="product.productName || '权益产品'"
+                class="product-image"
+                @error="handleImageError"
+                @load="handleImageLoad"
+                loading="lazy"
+              />
+              <div v-else class="no-image-placeholder">
+                <span>暂无图片</span>
               </div>
-              <el-button type="primary" size="small" @click.stop="addToCart(product)">
-                加入购物车
-              </el-button>
+            </div>
+
+            <div class="product-info">
+              <h3>{{ product.productName || '权益产品' }}</h3>
+              <p class="product-desc">{{ product.remark || '暂无描述' }}</p>
+
+              <div class="product-price">
+                <span class="current-price">Coin: {{ product.price || 0 }}</span>
+              </div>
+              <div class="product-actions">
+                <el-button type="primary" size="small" @click.stop="addToCart(product)">
+                  加入购物车
+                </el-button>
+                <el-button type="success" size="small" @click.stop="buyNow(product)">
+                  立即购买
+                </el-button>
+              </div>
             </div>
           </el-card>
         </el-col>
       </el-row>
+
+      <!-- 空状态 -->
+      <div v-if="!isLoadingHotProducts && hotProducts.length === 0" class="empty-section">
+        <el-empty description="暂无热门产品" />
+      </div>
     </div>
 
     <div class="section">
       <div class="section-header">
         <h2>推荐权益包</h2>
-        <el-button text @click="$router.push('/packages')">
+        <el-button text @click="handleViewMore('packages')">
           查看更多 <el-icon><ArrowRight /></el-icon>
         </el-button>
       </div>
-      <el-row :gutter="20">
+
+      <!-- 加载状态 -->
+      <div v-if="isLoadingPackages" class="loading-section">
+        <el-skeleton :rows="3" animated />
+      </div>
+
+      <!-- 权益包列表 -->
+      <el-row v-else :gutter="20">
         <el-col :span="8" v-for="pkg in recommendedPackages" :key="pkg.id">
           <el-card class="package-card" @click="handlePackageClick(pkg)">
+            <!-- 权益包图片 -->
+            <div class="package-image-container">
+              <img
+                v-if="pkg.packageImagePath"
+                :src="getImageUrl(pkg.packageImagePath)"
+                :alt="pkg.packageName || pkg.remark || '权益包'"
+                class="package-image"
+                @error="handleImageError"
+                @load="handleImageLoad"
+                loading="lazy"
+              />
+              <div v-else class="no-image-placeholder">
+                <span>暂无图片</span>
+              </div>
+            </div>
+
             <div class="package-header">
-              <h3>{{ pkg.name }}</h3>
-              <el-tag :type="pkg.tagType">{{ pkg.tag }}</el-tag>
+              <h3>{{ pkg.packageName || pkg.remark || '权益包' }}</h3>
+              <el-tag type="primary">推荐</el-tag>
             </div>
             <div class="package-content">
-              <p>{{ pkg.description }}</p>
-              <ul class="package-features">
-                <li v-for="feature in pkg.features" :key="feature">{{ feature }}</li>
-              </ul>
+              <p>{{ pkg.remark || '暂无描述' }}</p>
+              <div class="package-meta">
+                <span class="quantity">库存: {{ pkg.quantity || 0 }}</span>
+              </div>
             </div>
             <div class="package-footer">
               <div class="package-price">
-                <span class="current-price">¥{{ pkg.currentPrice }}</span>
-                <span class="original-price" v-if="pkg.originalPrice"
-                  >¥{{ pkg.originalPrice }}</span
-                >
+                <span class="current-price">Coin: {{ pkg.price || 0 }}</span>
               </div>
               <el-button type="primary" @click.stop="buyPackage(pkg)"> 立即购买 </el-button>
             </div>
           </el-card>
         </el-col>
       </el-row>
+
+      <!-- 空状态 -->
+      <div v-if="!isLoadingPackages && recommendedPackages.length === 0" class="empty-section">
+        <el-empty description="暂无推荐权益包" />
+      </div>
     </div>
 
     <div class="section">
       <div class="section-header">
         <h2>限时秒杀</h2>
-        <el-button text @click="$router.push('/flash-sale')">
+        <el-button text @click="handleViewMore('flash-sale')">
           查看更多 <el-icon><ArrowRight /></el-icon>
         </el-button>
       </div>
-      <el-row :gutter="20">
+
+      <!-- 加载状态 -->
+      <div v-if="isLoadingFlashSale" class="loading-section">
+        <el-skeleton :rows="3" animated />
+      </div>
+
+      <!-- 秒杀活动列表 -->
+      <el-row v-else :gutter="20">
         <el-col :span="6" v-for="item in flashSaleItems" :key="item.id">
           <el-card class="flash-sale-card" @click="handleFlashSaleClick(item)">
             <div class="flash-sale-timer">
               <el-tag type="danger">限时秒杀</el-tag>
               <div class="countdown">
-                <span>{{ item.countdown }}</span>
+                <span>{{ getRemainingTime(item.endTime) }}</span>
               </div>
             </div>
-            <img :src="item.image" :alt="item.name" class="flash-sale-image" />
-            <div class="flash-sale-info">
-              <h3>{{ item.name }}</h3>
-              <div class="flash-sale-price">
-                <span class="current-price">¥{{ item.currentPrice }}</span>
-                <span class="original-price">¥{{ item.originalPrice }}</span>
+
+            <!-- 活动图片 -->
+            <div class="flash-sale-image-container">
+              <img
+                v-if="item.activityImagePath"
+                :src="getImageUrl(item.activityImagePath)"
+                :alt="item.activityName || '秒杀活动'"
+                class="flash-sale-image"
+                @error="handleImageError"
+                @load="handleImageLoad"
+                loading="lazy"
+              />
+              <div v-else class="no-image-placeholder">
+                <span>暂无图片</span>
               </div>
-              <div class="flash-sale-progress">
-                <el-progress
-                  :percentage="item.soldPercentage"
-                  :stroke-width="8"
-                  :show-text="false"
-                />
-                <span class="progress-text">已售{{ item.soldPercentage }}%</span>
+            </div>
+
+            <div class="flash-sale-info">
+              <h3>{{ item.activityName || '秒杀活动' }}</h3>
+              <div class="flash-sale-price">
+                <span class="current-price">Coin: {{ item.price || 0 }}</span>
+                <span v-if="item.discountValue" class="discount">{{ item.discountValue }}折</span>
+              </div>
+              <div class="activity-meta">
+                <span class="meta-item">开始: {{ formatTime(item.startTime) }}</span>
+                <span class="meta-item">结束: {{ formatTime(item.endTime) }}</span>
               </div>
               <el-button type="danger" size="small" @click.stop="buyFlashSale(item)">
                 立即抢购
@@ -379,6 +511,11 @@ const buyFlashSale = (item: FlashSaleItem) => {
           </el-card>
         </el-col>
       </el-row>
+
+      <!-- 空状态 -->
+      <div v-if="!isLoadingFlashSale && flashSaleItems.length === 0" class="empty-section">
+        <el-empty description="暂无秒杀活动" />
+      </div>
     </div>
   </div>
 </template>
@@ -474,7 +611,9 @@ const buyFlashSale = (item: FlashSaleItem) => {
 .product-card {
   cursor: pointer;
   transition: all 0.3s;
-  height: 320px;
+  height: 420px;
+  display: flex;
+  flex-direction: column;
 }
 
 .product-card:hover {
@@ -482,15 +621,42 @@ const buyFlashSale = (item: FlashSaleItem) => {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
+.image-container {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  margin-bottom: 12px;
+}
+
 .product-image {
   width: 100%;
-  height: 150px;
+  height: 100%;
   object-fit: cover;
-  border-radius: 4px;
+  transition: transform 0.3s ease;
+}
+
+.product-image:hover {
+  transform: scale(1.05);
+}
+
+.no-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+  font-size: 14px;
 }
 
 .product-info {
   padding: 12px 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .product-info h3 {
@@ -524,12 +690,50 @@ const buyFlashSale = (item: FlashSaleItem) => {
   text-decoration: line-through;
 }
 
+.product-meta {
+  margin-bottom: 12px;
+}
+
+.category {
+  font-size: 12px;
+  color: #909399;
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.product-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  justify-content: center;
+}
+
+.product-actions .el-button {
+  flex: 1;
+  max-width: 100px;
+}
+
+.loading-section {
+  margin: 20px 0;
+  padding: 20px;
+}
+
+.empty-section {
+  margin: 40px 0;
+  text-align: center;
+}
+
 .package-card {
   cursor: pointer;
   transition: all 0.3s;
-  height: 280px;
+  height: 350px;
   display: flex;
   flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .package-card:hover {
@@ -537,59 +741,113 @@ const buyFlashSale = (item: FlashSaleItem) => {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
+.package-image-container {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  background-color: #f8f9fa;
+  margin-bottom: 0;
+}
+
+.package-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: all 0.3s ease;
+}
+
+.package-image:hover {
+  transform: scale(1.08);
+}
+
 .package-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding: 12px 12px 0 12px;
 }
 
 .package-header h3 {
   margin: 0;
   color: #303133;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  height: 36px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.package-header .el-tag {
+  flex-shrink: 0;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 12px;
+  padding: 4px 8px;
 }
 
 .package-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px;
 }
 
 .package-content p {
   color: #606266;
-  margin-bottom: 12px;
-}
-
-.package-features {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.package-features li {
-  color: #606266;
+  margin-bottom: 10px;
   font-size: 14px;
-  margin-bottom: 4px;
-  padding-left: 16px;
-  position: relative;
+  line-height: 1.4;
+  height: 32px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.package-features li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  color: #67c23a;
+.package-meta {
+  margin-bottom: 10px;
+}
+
+.quantity {
+  font-size: 12px;
+  color: #606266;
+  background: #f0f2f5;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 500;
 }
 
 .package-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 16px;
+  margin-top: auto;
+  padding: 16px 12px;
+  background: #f5f7fa;
+  border-top: 1px solid #e4e7ed;
+}
+
+.package-footer .el-button {
+  border-radius: 6px;
+  font-weight: 600;
+  height: 34px;
+  padding: 0 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .flash-sale-card {
   cursor: pointer;
   transition: all 0.3s;
-  height: 320px;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
 .flash-sale-card:hover {
@@ -610,22 +868,80 @@ const buyFlashSale = (item: FlashSaleItem) => {
   font-weight: bold;
 }
 
+.flash-sale-image-container {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  margin-bottom: 12px;
+}
+
 .flash-sale-image {
   width: 100%;
-  height: 120px;
+  height: 100%;
   object-fit: cover;
-  border-radius: 4px;
-  margin-bottom: 12px;
+  transition: transform 0.3s ease;
+}
+
+.flash-sale-image:hover {
+  transform: scale(1.05);
+}
+
+.no-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+  font-size: 14px;
+}
+
+.flash-sale-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px;
 }
 
 .flash-sale-info h3 {
   margin: 0 0 8px 0;
   font-size: 16px;
   color: #303133;
+  height: 40px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .flash-sale-price {
   margin-bottom: 12px;
+}
+
+.discount {
+  font-size: 12px;
+  color: #f56c6c;
+  background: #fef0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.activity-meta {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.meta-item {
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
 }
 
 .flash-sale-progress {
@@ -635,5 +951,14 @@ const buyFlashSale = (item: FlashSaleItem) => {
 .progress-text {
   font-size: 12px;
   color: #909399;
+}
+
+/* 确保按钮有足够的空间 */
+.flash-sale-info .el-button {
+  margin-top: auto;
+  width: 100%;
+  height: 36px;
+  font-weight: 600;
+  border-radius: 6px;
 }
 </style>

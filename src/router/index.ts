@@ -13,16 +13,28 @@ const router = createRouter({
       path: '/products',
       name: 'products',
       component: () => import('../views/client/ProductsView.vue'),
+      meta: {
+        title: '权益产品',
+        keepAlive: false,
+      },
     },
     {
       path: '/packages',
       name: 'packages',
       component: () => import('../views/client/PackagesView.vue'),
+      meta: {
+        title: '权益包',
+        keepAlive: false,
+      },
     },
     {
       path: '/flash-sale',
       name: 'flashSale',
       component: () => import('../views/client/FlashSaleView.vue'),
+      meta: {
+        title: '限时秒杀',
+        keepAlive: false,
+      },
     },
     {
       path: '/points',
@@ -56,6 +68,18 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
+  console.log('=== 路由守卫调试信息 ===')
+  console.log('从:', from.path)
+  console.log('到:', to.path)
+  console.log('路由元信息:', to.meta)
+
+  // 更新页面标题
+  if (to.meta.title) {
+    document.title = `${to.meta.title} - 权益商城`
+  } else {
+    document.title = '权益商城'
+  }
+
   // 检查路由是否需要登录
   if (to.meta.requiresAuth) {
     // 检查本地存储中的登录状态
@@ -70,6 +94,20 @@ router.beforeEach((to, from, next) => {
   }
 
   next()
+})
+
+// 路由跳转后的处理
+router.afterEach((to, from) => {
+  console.log('=== 路由跳转完成 ===')
+  console.log('跳转完成 - 从:', from.path, '到:', to.path)
+
+  // 滚动到页面顶部
+  window.scrollTo(0, 0)
+
+  // 强制刷新页面内容（如果路由跳转有问题）
+  if (from.path !== to.path) {
+    console.log('路由已改变，页面应该更新')
+  }
 })
 
 export default router
