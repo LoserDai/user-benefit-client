@@ -77,7 +77,7 @@
                 <!-- 已售和星级评分已移除 -->
               </div>
               <div class="product-price">
-                <span class="current-price">¥{{ product.price }}</span>
+                <span class="current-price">Coin: {{ product.price }}</span>
                 <!-- 无原价、折扣等字段，隐藏 -->
               </div>
               <div class="product-actions">

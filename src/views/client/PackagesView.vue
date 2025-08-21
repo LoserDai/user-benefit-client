@@ -69,7 +69,7 @@
             </div>
 
             <div class="package-info">
-              <h3 class="package-title">{{ packageItem.remark || '权益包' }}</h3>
+              <h3 class="package-title">{{ packageItem.packageName || '权益包' }}</h3>
               <p class="package-desc">{{ packageItem.remark || '暂无描述' }}</p>
 
               <div class="package-meta">
@@ -77,7 +77,7 @@
               </div>
 
               <div class="package-price">
-                <span class="current-price">¥{{ packageItem.price || 0 }}</span>
+                <span class="current-price">Coin: {{ packageItem.price || 0 }}</span>
               </div>
 
               <div class="package-actions">
