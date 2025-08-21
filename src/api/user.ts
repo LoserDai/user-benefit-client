@@ -121,10 +121,11 @@ export const packageApi = {
   queryPackage: (params: {
     id?: number
     createTime?: string
-    productNames?: string[]
+    packageName?: string
     pageNum: number
     pageSize: number
-    price?: number
+    minPrice?: number
+    maxPrice?: number
     quantity?: number
     sortField?: string
     sortOrder?: string

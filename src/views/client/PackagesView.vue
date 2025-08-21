@@ -9,10 +9,10 @@
     <!-- 筛选和搜索 -->
     <div class="filter-section">
       <el-row :gutter="20">
-        <el-col :span="8">
+        <el-col :span="12">
           <el-input
-            v-model="searchKeyword"
-            placeholder="搜索权益包..."
+            v-model="searchPackageName"
+            placeholder="搜索权益包名称..."
             clearable
             @keyup.enter="handleSearch"
           >
@@ -21,24 +21,24 @@
             </template>
           </el-input>
         </el-col>
-        <el-col :span="8">
-          <el-select v-model="selectedPriceRange" placeholder="价格区间" clearable>
-            <el-option
-              v-for="range in priceRanges"
-              :key="range.value"
-              :label="range.label"
-              :value="range.value"
-            />
-          </el-select>
+        <el-col :span="12">
+          <el-input
+            v-model="searchQuantity"
+            placeholder="筛选库存数量..."
+            type="number"
+            clearable
+            @keyup.enter="handleSearch"
+          >
+            <template #prefix>库存</template>
+          </el-input>
         </el-col>
-        <el-col :span="8">
-          <el-select v-model="selectedSort" placeholder="排序方式" clearable>
-            <el-option label="默认排序" value="default" />
-            <el-option label="价格从低到高" value="price-asc" />
-            <el-option label="价格从高到低" value="price-desc" />
-            <el-option label="数量优先" value="quantity" />
-            <el-option label="最新上架" value="newest" />
-          </el-select>
+      </el-row>
+
+      <!-- 搜索按钮 -->
+      <el-row :gutter="20" style="margin-top: 15px">
+        <el-col :span="24" style="text-align: center">
+          <el-button type="primary" @click="handleSearch" :loading="isLoading"> 搜索 </el-button>
+          <el-button @click="handleReset">重置</el-button>
         </el-col>
       </el-row>
     </div>
@@ -69,14 +69,17 @@
             </div>
 
             <div class="package-info">
-              <h3>{{ packageItem.remark || '权益包' }}</h3>
+              <h3 class="package-title">{{ packageItem.remark || '权益包' }}</h3>
               <p class="package-desc">{{ packageItem.remark || '暂无描述' }}</p>
+
               <div class="package-meta">
-                <span class="quantity">数量: {{ packageItem.quantity || 0 }}</span>
+                <span class="quantity">库存: {{ packageItem.quantity || 0 }}</span>
               </div>
+
               <div class="package-price">
                 <span class="current-price">¥{{ packageItem.price || 0 }}</span>
               </div>
+
               <div class="package-actions">
                 <el-button type="primary" size="small" @click.stop="addToCart(packageItem)">
                   加入购物车
@@ -84,6 +87,11 @@
                 <el-button type="danger" size="small" @click.stop="buyNow(packageItem)">
                   立即购买
                 </el-button>
+              </div>
+              <!-- 调试信息 -->
+              <div style="font-size: 10px; color: #999; text-align: center; margin-top: 8px">
+                ID: {{ packageItem.id }} | 库存: {{ packageItem.quantity }} | 价格:
+                {{ packageItem.price }}
               </div>
             </div>
           </el-card>
@@ -116,21 +124,11 @@ import { BACKEND_CONFIG } from '@/config/backend'
 const router = useRouter()
 
 // 响应式数据
-const selectedPriceRange = ref('')
-const selectedSort = ref('default')
-const searchKeyword = ref('')
+const searchPackageName = ref('')
+const searchQuantity = ref('')
 const currentPage = ref(1)
 const pageSize = ref(12)
 const totalPackages = ref(0)
-
-// 价格区间选项
-const priceRanges = ref([
-  { label: '0-50元', value: '0-50' },
-  { label: '50-100元', value: '50-100' },
-  { label: '100-200元', value: '100-200' },
-  { label: '200-500元', value: '200-500' },
-  { label: '500元以上', value: '500+' },
-])
 
 // 权益包数据
 const packages = ref<any[]>([])
@@ -149,40 +147,14 @@ const fetchPackages = async () => {
     status: 'ACTIVE',
   }
 
-  // 价格区间
-  if (selectedPriceRange.value) {
-    const [min, max] = selectedPriceRange.value.split('-')
-    params.price = Number(min)
-    if (max && max !== '+') {
-      // 这里可以根据需要调整价格筛选逻辑
-    }
+  // 权益包名称搜索
+  if (searchPackageName.value && searchPackageName.value.trim() !== '') {
+    params.packageName = searchPackageName.value.trim()
   }
 
-  // 排序
-  if (selectedSort.value && selectedSort.value !== 'default') {
-    switch (selectedSort.value) {
-      case 'price-asc':
-        params.sortField = 'price'
-        params.sortOrder = 'asc'
-        break
-      case 'price-desc':
-        params.sortField = 'price'
-        params.sortOrder = 'desc'
-        break
-      case 'quantity':
-        params.sortField = 'quantity'
-        params.sortOrder = 'desc'
-        break
-      case 'newest':
-        params.sortField = 'id'
-        params.sortOrder = 'desc'
-        break
-    }
-  }
-
-  // 搜索
-  if (searchKeyword.value) {
-    params.remark = searchKeyword.value
+  // 库存筛选
+  if (searchQuantity.value && searchQuantity.value.trim() !== '') {
+    params.quantity = Number(searchQuantity.value)
   }
 
   try {
@@ -200,9 +172,9 @@ const fetchPackages = async () => {
   }
 }
 
-// 监听筛选、分页、排序、搜索变化自动请求
+// 监听分页变化自动请求
 watch(
-  [selectedPriceRange, selectedSort, searchKeyword, currentPage, pageSize],
+  [currentPage, pageSize],
   () => {
     // 避免在组件初始化时重复调用
     if (packages.value.length > 0 || currentPage.value > 1) {
@@ -230,7 +202,19 @@ const filteredPackages = computed(() => {
 // 方法
 const handleSearch = () => {
   currentPage.value = 1
+  fetchPackages()
   ElMessage.success('搜索完成')
+}
+
+const handleReset = () => {
+  // 重置所有筛选条件
+  searchPackageName.value = ''
+  searchQuantity.value = ''
+  currentPage.value = 1
+
+  // 重新获取数据
+  fetchPackages()
+  ElMessage.success('筛选条件已重置')
 }
 
 const handlePackageClick = (packageItem: any) => {
@@ -300,6 +284,19 @@ const handleImageError = (event: Event) => {
   padding: 20px;
   background: #f5f7fa;
   border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.filter-section .el-row {
+  margin-bottom: 0;
+}
+
+.filter-section .el-col {
+  margin-bottom: 10px;
+}
+
+.filter-section .el-button {
+  margin-right: 10px;
 }
 
 .packages-grid {
@@ -309,10 +306,12 @@ const handleImageError = (event: Event) => {
 .package-card {
   cursor: pointer;
   transition: all 0.3s;
-  height: 400px;
+  min-height: 450px;
   width: 100%;
   margin-bottom: 20px;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .image-container {
@@ -351,53 +350,83 @@ const handleImageError = (event: Event) => {
 }
 
 .package-info {
-  padding: 20px;
+  padding: 12px 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-.package-info h3 {
-  margin: 0 0 12px 0;
-  font-size: 18px;
+.package-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
   color: #303133;
-  height: 50px;
+  height: 40px;
   overflow: hidden;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 .package-desc {
   color: #606266;
   font-size: 14px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   height: 40px;
   overflow: hidden;
+  line-height: 1.5;
 }
 
 .package-meta {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  padding: 8px 0;
+  background-color: #f8f9fa;
+  border-radius: 4px;
 }
 
 .quantity {
   font-size: 14px;
-  color: #909399;
+  color: #606266;
+  font-weight: 500;
 }
 
 .package-price {
   margin-bottom: 16px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  padding: 8px 0;
 }
 
 .current-price {
   font-size: 20px;
   font-weight: bold;
   color: #f56c6c;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .package-actions {
   display: flex;
   gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  justify-content: center;
+}
+
+.package-actions .el-button {
+  flex: 1;
+  max-width: 120px;
+  height: 36px;
+  font-weight: 500;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.package-actions .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .pagination-section {
