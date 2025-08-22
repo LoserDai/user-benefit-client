@@ -102,10 +102,12 @@
           <div class="exchange-input-container">
             <el-input
               v-model="inputFrom"
-              placeholder="请输入内容"
+              placeholder="请输入兑换金额"
               class="exchange-el-input"
               :max="exchangeDirection === 'balance-to-points' ? userBalance : userPoints"
               type="number"
+              step="0.01"
+              min="0.01"
               @input="debouncedValidate"
             />
             <div class="balance-hint">
@@ -131,15 +133,6 @@
         </div>
         <div class="exchange-btn-row">
           <el-button type="primary" @click="handleExchange" class="exchange-btn">兑换</el-button>
-          <el-button
-            type="info"
-            @click="testCreateSwapOrder"
-            class="test-btn"
-            size="small"
-            style="margin-left: 10px"
-          >
-            测试兑换
-          </el-button>
         </div>
       </div>
       <div class="exchange-info">
@@ -148,8 +141,11 @@
           加载配置中...
         </div>
         <div v-else>
-          <div>兑换率：1 Balance = {{ exchangeRate }} 积分</div>
-          <div>手续费：{{ (feeRate * 100).toFixed(2) }}%</div>
+          <div v-if="exchangeRate !== null">兑换率：1 Balance = {{ exchangeRate }} 积分</div>
+          <div v-else class="config-loading">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            加载兑换配置中...
+          </div>
           <div class="config-direction">
             当前配置：{{
               exchangeDirection === 'balance-to-points'
@@ -168,7 +164,7 @@
           确定要将 <b>{{ inputFrom }}</b> {{ exchangeFromLabel }} 兑换为 <b>{{ inputTo }}</b>
           {{ exchangeToLabel }} 吗？
         </p>
-        <p>手续费：{{ feeAmount }} {{ exchangeFromLabel }}</p>
+
         <p class="exchange-summary">
           <span
             >兑换方向：{{
@@ -221,7 +217,6 @@ interface ApiError extends Error {
 interface SwapConfig {
   id: number
   userId: number
-  fee: number
   rate: number
   ccy: string
 }
@@ -231,7 +226,6 @@ interface SwapOrder {
   amountBuy: number
   amountSell: number
   ccy: string
-  exchangeFee: number
   exchangeRate: number
 }
 
@@ -251,15 +245,6 @@ const fetchSwapConfig = async (direction?: 'balance-to-points' | 'points-to-bala
 
   console.log('获取兑换配置，方向:', targetDirection, '参数:', ccy)
 
-  // 检查缓存中是否已有配置
-  if (configCache.value[ccy]) {
-    console.log('使用缓存的配置:', ccy, configCache.value[ccy])
-    const cachedConfig = configCache.value[ccy]!
-    exchangeRate.value = cachedConfig.rate
-    feeRate.value = cachedConfig.fee
-    return
-  }
-
   isLoadingConfig.value = true
 
   try {
@@ -267,33 +252,32 @@ const fetchSwapConfig = async (direction?: 'balance-to-points' | 'points-to-bala
     console.log('兑换配置API响应:', res)
 
     if (res.data) {
-      const newRate = res.data.rate || 10
-      const newFee = res.data.fee || 0.02
+      const newRate = res.data.rate
 
-      // 更新当前配置
-      exchangeRate.value = newRate
-      feeRate.value = newFee
-
-      // 缓存配置
-      configCache.value[ccy] = {
-        rate: newRate,
-        fee: newFee,
+      // 检查兑换率是否有效
+      if (newRate !== undefined && newRate !== null && newRate > 0) {
+        console.log('设置兑换率:', newRate, '方向:', targetDirection, 'ccy:', ccy)
+        // 更新当前配置
+        exchangeRate.value = newRate
+        console.log('兑换率已设置为:', exchangeRate.value)
+      } else {
+        console.error('后端返回的兑换率无效:', newRate)
+        ElMessage.warning('兑换率配置无效，请稍后重试')
+        return
       }
 
       console.log('更新后的兑换配置:', {
         rate: exchangeRate.value,
-        fee: feeRate.value,
         direction: targetDirection,
         ccy: ccy,
       })
     }
   } catch (e) {
     console.error('获取兑换配置失败:', e)
-    ElMessage.warning('获取兑换配置失败，使用默认配置')
+    ElMessage.warning('获取兑换配置失败，请稍后重试')
 
-    // 使用默认配置
-    exchangeRate.value = 10
-    feeRate.value = 0.02
+    // 配置获取失败，不设置默认值
+    console.log('配置获取失败，等待重试')
   } finally {
     isLoadingConfig.value = false
   }
@@ -301,16 +285,20 @@ const fetchSwapConfig = async (direction?: 'balance-to-points' | 'points-to-bala
 
 // 根据兑换方向获取对应的配置
 const getCurrentConfig = () => {
+  // 检查兑换率是否已获取
+  if (exchangeRate.value === null) {
+    console.warn('兑换率尚未获取，无法计算兑换结果')
+    return null
+  }
+
   if (exchangeDirection.value === 'balance-to-points') {
     return {
       rate: exchangeRate.value,
-      fee: feeRate.value,
     }
   } else {
     // 积分到Balance的兑换，使用反向配置
     return {
       rate: 1 / exchangeRate.value,
-      fee: feeRate.value,
     }
   }
 }
@@ -319,14 +307,18 @@ const getCurrentConfig = () => {
 const calculateExchangeResult = (from: number) => {
   const config = getCurrentConfig()
 
+  // 检查配置是否可用
+  if (!config) {
+    inputTo.value = ''
+    return
+  }
+
   if (exchangeDirection.value === 'balance-to-points') {
     // 余额兑换积分
-    let afterFee = from - from * config.fee
-    inputTo.value = String(Math.floor(afterFee * config.rate))
+    inputTo.value = String(Number((from * config.rate).toFixed(2)))
   } else {
     // 积分兑换余额
-    let afterFee = from - Math.floor(from * config.fee)
-    inputTo.value = String(Number((afterFee * config.rate).toFixed(2)))
+    inputTo.value = String(Number((from * config.rate).toFixed(2)))
   }
 }
 
@@ -341,16 +333,12 @@ const debouncedValidate = () => {
   }, 300) // 300ms防抖
 }
 
-// 刷新所有配置
+// 刷新配置
 const refreshAllConfigs = async () => {
-  console.log('刷新所有兑换配置')
+  console.log('刷新兑换配置')
 
-  // 清空缓存，强制重新获取
-  configCache.value = {}
-
-  // 重新获取两个方向的配置
-  await fetchSwapConfig('balance-to-points')
-  await fetchSwapConfig('points-to-balance')
+  // 重新获取当前方向的配置
+  await fetchSwapConfig(exchangeDirection.value)
 
   ElMessage.success('兑换配置刷新成功')
 }
@@ -387,6 +375,13 @@ const validateInput = () => {
     return
   }
 
+  // 检查兑换率是否已获取
+  if (exchangeRate.value === null) {
+    ElMessage.warning('兑换配置尚未加载完成，请稍后再试')
+    inputTo.value = ''
+    return
+  }
+
   // 如果输入值有效，触发计算
   calculateExchangeResult(from)
 }
@@ -407,6 +402,12 @@ const setMaxAmount = () => {
   }
 
   inputFrom.value = String(maxAmount)
+
+  // 检查兑换率是否已获取
+  if (exchangeRate.value === null) {
+    ElMessage.warning('兑换配置尚未加载完成，请稍后再试')
+    return
+  }
 
   // 直接计算，避免重复验证
   calculateExchangeResult(maxAmount)
@@ -430,18 +431,17 @@ const createSwapOrder = async () => {
   const ccy = exchangeDirection.value === 'balance-to-points' ? 'B/P' : 'P/B'
   const config = getCurrentConfig()
 
-  // 计算手续费
-  const exchangeFee =
-    exchangeDirection.value === 'balance-to-points'
-      ? from * config.fee
-      : Math.floor(from * config.fee)
+  // 检查配置是否可用
+  if (!config) {
+    ElMessage.error('兑换配置尚未加载完成，请稍后再试')
+    return
+  }
 
   // 构建兑换订单数据
   const orderData: SwapOrder = {
     amountBuy: to, // 买入金额（兑换后获得）
     amountSell: from, // 卖出金额（兑换前拥有）
     ccy: ccy, // 兑换方向
-    exchangeFee: exchangeFee, // 手续费
     exchangeRate: config.rate, // 兑换率
   }
 
@@ -474,7 +474,7 @@ const createSwapOrder = async () => {
     }
 
     // 重置输入值
-    inputFrom.value = '1'
+    inputFrom.value = ''
     inputTo.value = ''
 
     // 重新获取用户数据（可选，确保数据同步）
@@ -487,25 +487,6 @@ const createSwapOrder = async () => {
   } finally {
     isSubmittingOrder.value = false
   }
-}
-
-// 测试兑换功能（用于调试）
-const testCreateSwapOrder = async () => {
-  console.log('测试兑换功能')
-
-  // 设置测试数据
-  inputFrom.value = '10'
-  validateInput() // 触发计算
-
-  // 等待计算完成
-  setTimeout(() => {
-    if (inputTo.value && Number(inputTo.value) > 0) {
-      console.log('测试数据准备完成，开始兑换')
-      createSwapOrder()
-    } else {
-      ElMessage.warning('请先输入有效的兑换金额')
-    }
-  }, 100)
 }
 
 // 获取用户积分和余额信息
@@ -577,19 +558,12 @@ const fetchUserPoints = async () => {
 // 积分兑换相关
 const exchangeDirection = ref<'balance-to-points' | 'points-to-balance'>('balance-to-points')
 const showExchangeDialog = ref(false)
-const exchangeRate = ref(10) // 1余额=10积分
-const feeRate = ref(0.02) // 2%手续费
+const exchangeRate = ref<number | null>(null) // 兑换率，初始为null，等待接口获取
 const isLoadingConfig = ref(false) // 配置加载状态
 const isSubmittingOrder = ref(false) // 兑换订单提交状态
 
-// 配置缓存，避免重复请求
-const configCache = ref<{
-  'B/P'?: { rate: number; fee: number }
-  'P/B'?: { rate: number; fee: number }
-}>({})
-
 // inputFrom/inputTo 类型调整为字符串，便于el-input
-const inputFrom = ref('1')
+const inputFrom = ref('')
 const inputTo = ref('')
 
 const exchangeFromLabel = computed(() =>
@@ -609,15 +583,6 @@ const isUserLoggedIn = computed(() => {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const currentUser = localStorage.getItem('currentUser')
   return isLoggedIn && !!currentUser
-})
-
-const feeAmount = computed(() => {
-  const config = getCurrentConfig()
-  if (exchangeDirection.value === 'balance-to-points') {
-    return (Number(inputFrom.value) * config.fee).toFixed(2)
-  } else {
-    return Math.floor(Number(inputFrom.value) * config.fee)
-  }
 })
 
 watch([inputFrom, exchangeDirection], () => {
@@ -645,6 +610,12 @@ watch([inputFrom, exchangeDirection], () => {
     return
   }
 
+  // 检查兑换率是否已获取
+  if (exchangeRate.value === null) {
+    inputTo.value = ''
+    return
+  }
+
   // 如果输入值有效，触发计算
   calculateExchangeResult(from)
 })
@@ -654,16 +625,16 @@ function swapExchangeDirection() {
     exchangeDirection.value === 'balance-to-points' ? 'points-to-balance' : 'balance-to-points'
   exchangeDirection.value = newDirection
 
-  // 切换方向后重置输入值，并设置为1
-  inputFrom.value = '1'
+  // 切换方向后重置输入值
+  inputFrom.value = ''
   inputTo.value = ''
 
   // 切换方向后重新获取对应的配置
   console.log('兑换方向切换为:', newDirection)
   fetchSwapConfig(newDirection)
 
-  // 直接计算，避免重复验证
-  calculateExchangeResult(1)
+  // 等待配置获取完成后再计算
+  // 这里不直接计算，因为配置可能还在加载中
 }
 
 function handleExchange() {
@@ -698,18 +669,6 @@ function handleExchange() {
   if (from > maxAmount) {
     const currencyName = exchangeDirection.value === 'balance-to-points' ? 'Balance' : '积分'
     ElMessage.warning(`${currencyName}余额不足，当前可用：${maxAmount}`)
-    return
-  }
-
-  // 检查最小兑换金额（避免手续费后金额过小）
-  const config = getCurrentConfig()
-  const afterFee =
-    exchangeDirection.value === 'balance-to-points'
-      ? from - from * config.fee
-      : from - Math.floor(from * config.fee)
-
-  if (afterFee <= 0) {
-    ElMessage.warning('兑换金额过小，扣除手续费后无剩余')
     return
   }
 
@@ -754,10 +713,12 @@ const handleStorageChange = (e: StorageEvent) => {
 
 // 监听登录成功事件（支持跨组件通信）
 const handleLoginSuccess = () => {
-  console.log('收到登录成功事件，自动刷新积分数据')
+  console.log('收到登录成功事件，自动刷新积分数据和兑换配置')
   // 延迟一下，确保登录状态完全更新
-  setTimeout(() => {
-    fetchUserPoints()
+  setTimeout(async () => {
+    await fetchUserPoints()
+    // 登录成功后获取兑换配置
+    await fetchSwapConfig('balance-to-points')
   }, 500)
 }
 
@@ -774,9 +735,14 @@ const handleLogoutSuccess = () => {
 onMounted(async () => {
   fetchUserPoints()
 
-  // 同时获取两个方向的配置，提高用户体验
-  await fetchSwapConfig('balance-to-points')
-  await fetchSwapConfig('points-to-balance')
+  // 检查用户是否已登录，如果已登录则获取配置
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+  const currentUser = localStorage.getItem('currentUser')
+
+  if (isLoggedIn && currentUser) {
+    // 只获取当前方向的配置，避免覆盖
+    await fetchSwapConfig('balance-to-points')
+  }
 
   // 添加localStorage变化监听
   window.addEventListener('storage', handleStorageChange)

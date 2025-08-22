@@ -106,7 +106,6 @@ export const userApi = {
     amountBuy: number
     amountSell: number
     ccy: string
-    exchangeFee: number
     exchangeRate: number
   }) => {
     return api.post('/swapOrder/saveSwapOrder', data)
