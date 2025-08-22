@@ -96,6 +96,11 @@ export const userApi = {
     return api.post(`/points/query?ccy=${encodeURIComponent(ccy)}`)
   },
 
+  // 查询已消费金额
+  queryConsumed: (changeType: string) => {
+    return api.post('/pointTransaction/queryConsumed', changeType)
+  },
+
   // 获取兑换配置
   getSwapConfig: (ccy: string) => {
     return api.get(`/config/getConfig?ccy=${encodeURIComponent(ccy)}`)

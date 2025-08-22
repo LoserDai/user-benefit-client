@@ -4,27 +4,6 @@
     <div class="page-header">
       <h1>积分兑换</h1>
       <p>积分兑换好礼，让积分更有价值</p>
-      <el-button
-        type="primary"
-        :icon="Refresh"
-        @click="fetchUserPoints"
-        :loading="isLoadingPoints"
-        size="small"
-        class="refresh-btn"
-      >
-        刷新积分信息
-      </el-button>
-      <el-button
-        type="success"
-        :icon="Refresh"
-        @click="refreshAllConfigs"
-        :loading="isLoadingConfig"
-        size="small"
-        class="refresh-btn"
-        style="margin-left: 10px"
-      >
-        刷新兑换配置
-      </el-button>
     </div>
 
     <!-- 积分信息 -->
@@ -42,7 +21,7 @@
 
       <!-- 积分信息卡片 -->
       <el-row v-else :gutter="20">
-        <el-col :span="8">
+        <el-col :span="6">
           <el-card class="points-card">
             <div class="points-item">
               <div class="points-icon">
@@ -58,7 +37,7 @@
             </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
           <el-card class="points-card">
             <div class="points-item">
               <div class="points-icon">
@@ -74,17 +53,33 @@
             </div>
           </el-card>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
           <el-card class="points-card">
             <div class="points-item">
               <div class="points-icon">
                 <el-icon :size="40"><shopping-cart-full /></el-icon>
               </div>
               <div class="points-content">
-                <h3>已消费</h3>
+                <h3>已消费Balance</h3>
                 <p class="points-number">
                   <span v-if="isLoadingPoints">加载中...</span>
-                  <span v-else>{{ consumedAmount }}</span>
+                  <span v-else>{{ consumedBalance }}</span>
+                </p>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="points-card">
+            <div class="points-item">
+              <div class="points-icon">
+                <el-icon :size="40"><shopping-cart-full /></el-icon>
+              </div>
+              <div class="points-content">
+                <h3>已消费积分</h3>
+                <p class="points-number">
+                  <span v-if="isLoadingPoints">加载中...</span>
+                  <span v-else>{{ consumedPoints }}</span>
                 </p>
               </div>
             </div>
@@ -189,7 +184,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '@/api/user'
-import { Refresh, Loading } from '@element-plus/icons-vue'
+import { Loading } from '@element-plus/icons-vue'
 
 // 扩展Window接口，添加自定义属性
 declare global {
@@ -232,7 +227,8 @@ interface SwapOrder {
 // 用户信息 - 支持decimal类型
 const userBalance = ref<string | number>('0') // 余额
 const userPoints = ref<string | number>('0') // 积分
-const consumedAmount = ref<string | number>('0') // 已消费
+const consumedBalance = ref<string | number>('0') // 已消费的Balance
+const consumedPoints = ref<string | number>('0') // 已消费的积分
 const isLoadingPoints = ref(false) // 加载状态
 
 // 获取兑换配置信息
@@ -333,14 +329,28 @@ const debouncedValidate = () => {
   }, 300) // 300ms防抖
 }
 
-// 刷新配置
-const refreshAllConfigs = async () => {
-  console.log('刷新兑换配置')
+// 更新已消费数据显示
+const updateConsumedDisplay = async () => {
+  try {
+    const consumedRes = await userApi.queryConsumed('2')
+    if (consumedRes.data) {
+      const totalBalanceConsumed = Number(consumedRes.data.totalBalance) || 0
+      const totalPointsConsumed = Number(consumedRes.data.totalPoints) || 0
 
-  // 重新获取当前方向的配置
-  await fetchSwapConfig(exchangeDirection.value)
+      // 分别设置已消费的Balance和积分
+      consumedBalance.value = totalBalanceConsumed.toFixed(2)
+      consumedPoints.value = totalPointsConsumed.toFixed(2)
 
-  ElMessage.success('兑换配置刷新成功')
+      console.log('已消费数据更新:', {
+        totalBalanceConsumed,
+        totalPointsConsumed,
+        consumedBalance: consumedBalance.value,
+        consumedPoints: consumedPoints.value,
+      })
+    }
+  } catch (error) {
+    console.error('更新已消费数据显示失败:', error)
+  }
 }
 
 // 输入验证函数
@@ -504,7 +514,8 @@ const fetchUserPoints = async () => {
     // 清空数据
     userBalance.value = '0'
     userPoints.value = '0'
-    consumedAmount.value = '0'
+    consumedBalance.value = '0'
+    consumedPoints.value = '0'
     return
   }
 
@@ -517,17 +528,47 @@ const fetchUserPoints = async () => {
     console.log('积分查询API响应:', res)
 
     // 根据后端返回的数据结构进行映射
-    // 支持decimal类型，后端返回的数据结构为 { balance: string|number, points: string|number, consumedAmount: string|number }
+    // 支持decimal类型，后端返回的数据结构为 { balance: string|number, points: string|number }
     if (res.data) {
       userBalance.value = res.data.balance || '0'
       userPoints.value = res.data.points || '0'
-      consumedAmount.value = res.data.consumedAmount || '0'
+    }
+
+    // 查询已消费金额
+    try {
+      const consumedRes = await userApi.queryConsumed('2') // 查询已消费，默认传2
+      console.log('已消费查询API响应:', consumedRes)
+
+      if (consumedRes.data) {
+        // 根据新的接口返回结构处理数据
+        const totalBalanceConsumed = Number(consumedRes.data.totalBalance) || 0
+        const totalPointsConsumed = Number(consumedRes.data.totalPoints) || 0
+
+        // 分别设置已消费的Balance和积分
+        consumedBalance.value = totalBalanceConsumed.toFixed(2)
+        consumedPoints.value = totalPointsConsumed.toFixed(2)
+
+        console.log('已消费数据处理:', {
+          totalBalanceConsumed,
+          totalPointsConsumed,
+          consumedBalance: consumedBalance.value,
+          consumedPoints: consumedPoints.value,
+        })
+      } else {
+        consumedBalance.value = '0'
+        consumedPoints.value = '0'
+      }
+    } catch (consumedError) {
+      console.error('获取已消费数据失败:', consumedError)
+      consumedBalance.value = '0'
+      consumedPoints.value = '0'
     }
 
     console.log('处理后的用户数据:', {
       balance: userBalance.value,
       points: userPoints.value,
-      consumedAmount: consumedAmount.value,
+      consumedBalance: consumedBalance.value,
+      consumedPoints: consumedPoints.value,
     })
   } catch (e) {
     console.error('获取用户积分信息失败:', e)
@@ -542,13 +583,15 @@ const fetchUserPoints = async () => {
       // 清空数据
       userBalance.value = '0'
       userPoints.value = '0'
-      consumedAmount.value = '0'
+      consumedBalance.value = '0'
+      consumedPoints.value = '0'
     } else {
       ElMessage.error('获取用户积分信息失败')
       // 设置默认值
       userBalance.value = '0'
       userPoints.value = '0'
-      consumedAmount.value = '0'
+      consumedBalance.value = '0'
+      consumedPoints.value = '0'
     }
   } finally {
     isLoadingPoints.value = false
@@ -633,6 +676,9 @@ function swapExchangeDirection() {
   console.log('兑换方向切换为:', newDirection)
   fetchSwapConfig(newDirection)
 
+  // 切换方向后更新已消费数据显示
+  updateConsumedDisplay()
+
   // 等待配置获取完成后再计算
   // 这里不直接计算，因为配置可能还在加载中
 }
@@ -685,7 +731,8 @@ const checkLoginStatus = () => {
     // 清空数据
     userBalance.value = '0'
     userPoints.value = '0'
-    consumedAmount.value = '0'
+    consumedBalance.value = '0'
+    consumedPoints.value = '0'
   }
 }
 
@@ -728,7 +775,8 @@ const handleLogoutSuccess = () => {
   // 立即清空数据
   userBalance.value = '0'
   userPoints.value = '0'
-  consumedAmount.value = '0'
+  consumedBalance.value = '0'
+  consumedPoints.value = '0'
 }
 
 // 组件挂载时获取用户积分信息和兑换配置
@@ -803,10 +851,6 @@ onUnmounted(() => {
   font-size: 16px;
   color: #606266;
   margin-bottom: 16px;
-}
-
-.refresh-btn {
-  margin-top: 8px;
 }
 
 .login-required {
