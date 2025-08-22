@@ -96,6 +96,21 @@ export const userApi = {
     return api.post(`/points/query?ccy=${encodeURIComponent(ccy)}`)
   },
 
+  // 查询积分交易记录
+  queryAllPointTransaction: (params: {
+    account?: string
+    bizId?: string
+    changeType?: number
+    createTime?: string
+    pageNum: number
+    pageSize: number
+    sortField?: string
+    sortOrder?: string
+    userId?: number
+  }) => {
+    return api.post('/pointTransaction/queryAllPointTransaction', params)
+  },
+
   // 查询已消费金额
   queryConsumed: (changeType: string) => {
     return api.post('/pointTransaction/queryConsumed', changeType)

@@ -110,17 +110,55 @@
 
           <div class="points-history">
             <h3>积分记录</h3>
-            <el-table :data="pointsHistory" style="width: 100%">
-              <el-table-column prop="date" label="日期" width="180" />
-              <el-table-column prop="description" label="描述" />
-              <el-table-column prop="points" label="积分" width="100">
+            <el-table :data="filteredPointsHistory" style="width: 100%" v-loading="isLoadingPoints">
+              <el-table-column prop="createTime" label="日期" width="180">
                 <template #default="scope">
-                  <span :class="scope.row.type === 'earn' ? 'earn' : 'spend'">
-                    {{ scope.row.type === 'earn' ? '+' : '-' }}{{ scope.row.points }}
+                  {{ formatDate(scope.row.createTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="id" label="交易编号" width="120" />
+              <el-table-column prop="remark" label="描述" />
+              <el-table-column prop="displayValue" label="变动金额" width="100">
+                <template #default="scope">
+                  <span :class="scope.row.displayValue > 0 ? 'earn' : 'spend'">
+                    {{ scope.row.displayValue > 0 ? '+' : '' }}{{ scope.row.displayValue }}
                   </span>
                 </template>
               </el-table-column>
+              <el-table-column prop="displayLabel" label="变动类型" width="100">
+                <template #default="scope">
+                  <el-tag
+                    :type="scope.row.displayType === 'point' ? 'primary' : 'success'"
+                    size="small"
+                  >
+                    {{ scope.row.displayLabel }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="pointsAfter" label="Points" width="100">
+                <template #default="scope">
+                  <span class="balance-after">{{ scope.row.pointsAfter }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="balanceAfter" label="Balance" width="100">
+                <template #default="scope">
+                  <span class="balance-after">{{ scope.row.balanceAfter }}</span>
+                </template>
+              </el-table-column>
             </el-table>
+
+            <!-- 分页 -->
+            <div class="pagination-container">
+              <el-pagination
+                v-model:current-page="pagination.pageNum"
+                v-model:page-size="pagination.pageSize"
+                :page-sizes="[10, 20, 50, 100]"
+                :total="pagination.total"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+              />
+            </div>
           </div>
         </el-card>
       </div>
@@ -129,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { userApi } from '@/api/user'
 
@@ -153,11 +191,54 @@ const userInfo = ref({
   balance: '0', // 支持decimal类型
 })
 
+// 积分历史 - 初始化为空数组，从后端获取
+const pointsHistory = ref([])
+
+// 分页相关
+const pagination = ref({
+  pageNum: 1,
+  pageSize: 10,
+  total: 0,
+})
+
+const isLoadingPoints = ref(false) // 积分记录加载状态
+
+// 过滤后的积分历史 - 只显示有实际变动的记录
+const filteredPointsHistory = computed(() => {
+  const result: any[] = []
+
+  pointsHistory.value.forEach((item: any) => {
+    const pointChange = parseFloat(item.changePoint) || 0
+    const balanceChange = parseFloat(item.changeBalance) || 0
+
+    // 如果积分有变动，创建积分记录
+    if (pointChange !== 0) {
+      result.push({
+        ...item,
+        displayType: 'point',
+        displayValue: pointChange,
+        displayLabel: 'Points变动',
+      })
+    }
+
+    // 如果余额有变动，创建余额记录
+    if (balanceChange !== 0) {
+      result.push({
+        ...item,
+        displayType: 'balance',
+        displayValue: balanceChange,
+        displayLabel: 'Balance变动',
+      })
+    }
+  })
+
+  return result
+})
+
 // 获取当前用户信息
 const fetchCurrentUser = async () => {
   try {
     const response = await userApi.getCurrentUser()
-    console.log('获取用户信息成功:', response)
 
     // 更新用户信息
     if (response.data) {
@@ -197,7 +278,6 @@ const fetchPointsAndBalance = async () => {
   try {
     // 查询积分和余额，传递默认的ccy参数
     const response = await userApi.queryPoints('B/P')
-    console.log('查询积分和余额成功:', response)
 
     if (response.data) {
       // 支持decimal类型，转换为字符串显示
@@ -211,26 +291,34 @@ const fetchPointsAndBalance = async () => {
 }
 
 // 积分历史
-const pointsHistory = ref([
-  {
-    date: '2024-12-01 14:30:25',
-    description: '购买VIP会员月卡',
-    points: 500,
-    type: 'earn',
-  },
-  {
-    date: '2024-11-30 16:45:12',
-    description: '兑换电影票券',
-    points: 400,
-    type: 'spend',
-  },
-  {
-    date: '2024-11-29 09:15:33',
-    description: '签到奖励',
-    points: 10,
-    type: 'earn',
-  },
-])
+const fetchPointsHistory = async () => {
+  // 检查用户ID是否有效
+  if (!userInfo.value.id || userInfo.value.id === '未知') {
+    console.log('用户ID无效，跳过积分记录获取')
+    return
+  }
+
+  isLoadingPoints.value = true
+  try {
+    const response = await userApi.queryAllPointTransaction({
+      userId: Number(userInfo.value.id),
+      pageNum: pagination.value.pageNum,
+      pageSize: pagination.value.pageSize,
+      sortField: 'createTime',
+      sortOrder: 'desc',
+    })
+    if (response && response.data) {
+      pointsHistory.value = response.data.data || []
+      // 更新分页总数 - 使用过滤后的数据长度
+      pagination.value.total = filteredPointsHistory.value.length
+    }
+  } catch (error: any) {
+    console.error('获取积分记录失败:', error)
+    ElMessage.error('获取积分记录失败，请重试')
+  } finally {
+    isLoadingPoints.value = false
+  }
+}
 
 // 方法
 const handleMenuSelect = (key: string) => {
@@ -239,6 +327,7 @@ const handleMenuSelect = (key: string) => {
   // 当选择积分管理时，调用查询积分和余额接口
   if (key === 'points') {
     fetchPointsAndBalance()
+    fetchPointsHistory() // 选择积分管理时也加载积分记录
   }
 }
 
@@ -284,7 +373,7 @@ const saveBasicInfo = async () => {
     }
 
     const response = await userApi.updateUser(updateData)
-    console.log('更新用户信息成功:', response)
+
     ElMessage.success('基本信息保存成功')
 
     // 更新原始用户名，以便后续比较
@@ -342,9 +431,56 @@ const getUserRoleTagType = (userRole: string | number) => {
   return 'info' // 普通标签
 }
 
+// 日期格式化
+const formatDate = (timestamp: string) => {
+  const date = new Date(timestamp)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+// 积分变动类型文本
+const getChangeTypeText = (type: number) => {
+  switch (type) {
+    case 1:
+      return '收入'
+    case 2:
+      return '支出'
+    default:
+      return '未知'
+  }
+}
+
+// 积分变动类型标签类型
+const getChangeTypeTagType = (type: number) => {
+  switch (type) {
+    case 1:
+      return 'success'
+    case 2:
+      return 'danger'
+    default:
+      return 'info'
+  }
+}
+
+// 分页相关方法
+const handleSizeChange = (val: number) => {
+  pagination.value.pageSize = val
+  fetchPointsHistory()
+}
+
+const handleCurrentChange = (val: number) => {
+  pagination.value.pageNum = val
+  fetchPointsHistory()
+}
+
 // 组件挂载时获取用户信息
-onMounted(() => {
-  fetchCurrentUser()
+onMounted(async () => {
+  await fetchCurrentUser() // 先获取用户信息
+  fetchPointsHistory() // 用户信息获取完成后再加载积分记录
 })
 </script>
 
@@ -477,6 +613,16 @@ onMounted(() => {
 .spend {
   color: #f56c6c;
   font-weight: bold;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.balance-after {
+  color: #606266;
+  font-weight: 500;
 }
 
 .section {
