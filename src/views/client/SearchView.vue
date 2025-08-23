@@ -135,9 +135,31 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { userApi } from '@/api/user'
 
 const route = useRoute()
 const router = useRouter()
+
+// 用户信息
+const currentUser = ref<any>(null)
+const isLoadingUser = ref(false)
+
+// 获取当前用户信息
+const fetchCurrentUser = async () => {
+  if (isLoadingUser.value) return
+  isLoadingUser.value = true
+
+  try {
+    const response = await userApi.getCurrentUser()
+    if (response && response.data) {
+      currentUser.value = response.data
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  } finally {
+    isLoadingUser.value = false
+  }
+}
 
 // 响应式数据
 const searchKeyword = ref('')
@@ -296,8 +318,48 @@ const searchByTag = (tag: string) => {
   handleSearch()
 }
 
-const addToCart = (item: any) => {
-  ElMessage.success(`已将 ${item.name} 加入购物车`)
+const addToCart = async (item: any) => {
+  if (!currentUser.value || !currentUser.value.id) {
+    ElMessage.error('请先登录')
+    return
+  }
+
+  try {
+    const now = new Date().toISOString()
+    const cartData = {
+      cartItems: [
+        {
+          cartId: 0,
+          createTime: now,
+          id: 0,
+          itemId: item.id,
+          itemImage: item.image || '',
+          itemName: item.name || '商品',
+          itemType: item.type === 'product' ? 1 : 2, // 1表示权益产品，2表示权益包
+          pointPrice: item.currentPrice || 0,
+          quantity: 1,
+          updateTime: now,
+          userId: currentUser.value.id,
+        },
+      ],
+      createTime: now,
+      id: 0,
+      status: 1,
+      totalSelectedPoints: item.currentPrice || 0,
+      updateTime: now,
+      userId: currentUser.value.id,
+    }
+
+    const response = await userApi.createShoppingCart(cartData)
+    if (response && response.data !== undefined) {
+      ElMessage.success(`已将 ${item.name} 加入购物车`)
+    } else {
+      ElMessage.error('加入购物车失败，请重试')
+    }
+  } catch (error: any) {
+    console.error('加入购物车失败:', error)
+    ElMessage.error('加入购物车失败，请重试')
+  }
 }
 
 const handleSizeChange = (size: number) => {
@@ -311,6 +373,7 @@ const handleCurrentChange = (page: number) => {
 
 // 生命周期
 onMounted(() => {
+  fetchCurrentUser()
   // 从路由参数获取搜索关键词
   const keyword = route.query.keyword as string
   if (keyword) {

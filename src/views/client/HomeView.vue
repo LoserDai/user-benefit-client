@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { productApi, packageApi, activityApi } from '@/api/user'
+import { productApi, packageApi, activityApi, userApi } from '@/api/user'
 import { BACKEND_CONFIG } from '@/config/backend'
 
 interface Banner {
@@ -52,6 +52,27 @@ interface FlashSaleItem {
 }
 
 const router = useRouter()
+
+// 用户信息
+const currentUser = ref<any>(null)
+const isLoadingUser = ref(false)
+
+// 获取当前用户信息
+const fetchCurrentUser = async () => {
+  if (isLoadingUser.value) return
+  isLoadingUser.value = true
+
+  try {
+    const response = await userApi.getCurrentUser()
+    if (response && response.data) {
+      currentUser.value = response.data
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  } finally {
+    isLoadingUser.value = false
+  }
+}
 
 const banners = ref<Banner[]>([
   {
@@ -124,16 +145,136 @@ const handleQuickAccess = (item: QuickAccessItem) => {
   router.push(item.route)
 }
 
-const addToCart = (product: any) => {
-  ElMessage.success(`已将 ${product.productName || '权益产品'} 加入购物车`)
+const addToCart = async (product: any) => {
+  if (!currentUser.value || !currentUser.value.id) {
+    ElMessage.error('请先登录')
+    return
+  }
+
+  try {
+    const now = new Date().toISOString()
+    const cartData = {
+      cartItems: [
+        {
+          cartId: 0,
+          createTime: now,
+          id: 0,
+          itemId: product.id,
+          itemImage: product.productImagePath || '',
+          itemName: product.productName || '权益产品',
+          itemType: 1, // 1表示权益产品
+          pointPrice: product.price || 0,
+          quantity: 1,
+          updateTime: now,
+          userId: currentUser.value.id,
+        },
+      ],
+      createTime: now,
+      id: 0,
+      status: 1,
+      totalSelectedPoints: product.price || 0,
+      updateTime: now,
+      userId: currentUser.value.id,
+    }
+
+    const response = await userApi.createShoppingCart(cartData)
+    if (response && response.data !== undefined) {
+      ElMessage.success(`已将 ${product.productName || '权益产品'} 加入购物车`)
+    } else {
+      ElMessage.error('加入购物车失败，请重试')
+    }
+  } catch (error: any) {
+    console.error('加入购物车失败:', error)
+    ElMessage.error('加入购物车失败，请重试')
+  }
 }
 
-const addPackageToCart = (pkg: any) => {
-  ElMessage.success(`已将 ${pkg.packageName || pkg.remark || '权益包'} 加入购物车`)
+const addPackageToCart = async (pkg: any) => {
+  if (!currentUser.value || !currentUser.value.id) {
+    ElMessage.error('请先登录')
+    return
+  }
+
+  try {
+    const now = new Date().toISOString()
+    const cartData = {
+      cartItems: [
+        {
+          cartId: 0,
+          createTime: now,
+          id: 0,
+          itemId: pkg.id,
+          itemImage: pkg.packageImagePath || '',
+          itemName: pkg.packageName || pkg.remark || '权益包',
+          itemType: 2, // 2表示权益包
+          pointPrice: pkg.price || 0,
+          quantity: 1,
+          updateTime: now,
+          userId: currentUser.value.id,
+        },
+      ],
+      createTime: now,
+      id: 0,
+      status: 1,
+      totalSelectedPoints: pkg.price || 0,
+      updateTime: now,
+      userId: currentUser.value.id,
+    }
+
+    const response = await userApi.createShoppingCart(cartData)
+    if (response && response.data !== undefined) {
+      ElMessage.success(`已将 ${pkg.packageName || pkg.remark || '权益包'} 加入购物车`)
+    } else {
+      ElMessage.error('加入购物车失败，请重试')
+    }
+  } catch (error: any) {
+    console.error('加入购物车失败:', error)
+    ElMessage.error('加入购物车失败，请重试')
+  }
 }
 
-const addFlashSaleToCart = (item: any) => {
-  ElMessage.success(`已将 ${item.activityName || '秒杀活动'} 加入购物车`)
+const addFlashSaleToCart = async (item: any) => {
+  if (!currentUser.value || !currentUser.value.id) {
+    ElMessage.error('请先登录')
+    return
+  }
+
+  try {
+    const now = new Date().toISOString()
+    const cartData = {
+      cartItems: [
+        {
+          cartId: 0,
+          createTime: now,
+          id: 0,
+          itemId: item.id,
+          itemImage: item.activityImagePath || '',
+          itemName: item.activityName || '秒杀活动',
+          itemType: 3, // 3表示秒杀活动
+          pointPrice: item.price || 0,
+          quantity: 1,
+          updateTime: now,
+          userId: currentUser.value.id,
+        },
+      ],
+      createTime: now,
+      id: 0,
+      status: 1,
+      totalSelectedPoints: item.price || 0,
+      updateTime: now,
+      userId: currentUser.value.id,
+    }
+
+    const response = await userApi.createShoppingCart(cartData)
+    if (response && response.data !== undefined) {
+      ElMessage.success(`已将 ${item.activityName || '秒杀活动'} 加入购物车`)
+    } else {
+      ElMessage.error('加入购物车失败，请重试')
+    }
+  } catch (error: any) {
+    console.error('加入购物车失败:', error)
+    ElMessage.error('加入购物车失败，请重试')
+  }
 }
 
 // 获取热门权益产品
@@ -210,6 +351,7 @@ const fetchFlashSaleActivities = async () => {
 
 // 组件挂载时获取热门产品、推荐权益包和限时秒杀
 onMounted(() => {
+  fetchCurrentUser()
   fetchHotProducts()
   fetchRecommendedPackages()
   fetchFlashSaleActivities()

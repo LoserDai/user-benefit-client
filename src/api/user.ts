@@ -145,6 +145,31 @@ export const userApi = {
   deletedShoppingCart: (data: { id: number; userId: number }) => {
     return api.post('/cartItem/deletedShoppingCart', data)
   },
+
+  // 创建购物车
+  createShoppingCart: (data: {
+    cartItems: Array<{
+      cartId: number
+      createTime: string
+      id: number
+      itemId: number
+      itemImage: string
+      itemName: string
+      itemType: number
+      pointPrice: number
+      quantity: number
+      updateTime: string
+      userId: number
+    }>
+    createTime: string
+    id: number
+    status: number
+    totalSelectedPoints: number
+    updateTime: string
+    userId: number
+  }) => {
+    return api.post('/shoppingCart/createShoppingCart', data)
+  },
 }
 
 // 产品相关接口

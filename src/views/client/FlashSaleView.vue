@@ -138,10 +138,31 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { activityApi } from '@/api/user'
+import { activityApi, userApi } from '@/api/user'
 import { BACKEND_CONFIG } from '@/config/backend'
 
 const router = useRouter()
+
+// 用户信息
+const currentUser = ref<any>(null)
+const isLoadingUser = ref(false)
+
+// 获取当前用户信息
+const fetchCurrentUser = async () => {
+  if (isLoadingUser.value) return
+  isLoadingUser.value = true
+
+  try {
+    const response = await userApi.getCurrentUser()
+    if (response && response.data) {
+      currentUser.value = response.data
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  } finally {
+    isLoadingUser.value = false
+  }
+}
 
 // 筛选和分页数据
 const searchActivityName = ref('')
@@ -238,6 +259,7 @@ const isInitialized = ref(false)
 
 onMounted(() => {
   if (!isInitialized.value) {
+    fetchCurrentUser()
     fetchActivities()
     isInitialized.value = true
   }
@@ -259,14 +281,53 @@ const handleReset = () => {
   ElMessage.success('筛选条件已重置')
 }
 
-const buyFlashSale = (activity: any) => {
-  if (isActivityActive(activity)) {
-    ElMessage.success(`正在抢购: ${activity.activityName || '秒杀活动'}`)
+const buyFlashSale = async (activity: any) => {
+  if (!isActivityActive(activity)) {
+    ElMessage.warning('活动已结束，无法加入购物车')
+    return
   }
-}
 
-const addToCart = (activity: any) => {
-  ElMessage.success(`已将 ${activity.activityName || '秒杀活动'} 加入购物车`)
+  if (!currentUser.value || !currentUser.value.id) {
+    ElMessage.error('请先登录')
+    return
+  }
+
+  try {
+    const now = new Date().toISOString()
+    const cartData = {
+      cartItems: [
+        {
+          cartId: 0,
+          createTime: now,
+          id: 0,
+          itemId: activity.id,
+          itemImage: activity.activityImagePath || '',
+          itemName: activity.activityName || '秒杀活动',
+          itemType: 3, // 3表示秒杀活动
+          pointPrice: activity.price || 0,
+          quantity: 1,
+          updateTime: now,
+          userId: currentUser.value.id,
+        },
+      ],
+      createTime: now,
+      id: 0,
+      status: 1,
+      totalSelectedPoints: activity.price || 0,
+      updateTime: now,
+      userId: currentUser.value.id,
+    }
+
+    const response = await userApi.createShoppingCart(cartData)
+    if (response && response.data !== undefined) {
+      ElMessage.success(`已将 ${activity.activityName || '秒杀活动'} 加入购物车`)
+    } else {
+      ElMessage.error('加入购物车失败，请重试')
+    }
+  } catch (error: any) {
+    console.error('加入购物车失败:', error)
+    ElMessage.error('加入购物车失败，请重试')
+  }
 }
 
 const handleSizeChange = (size: number) => {

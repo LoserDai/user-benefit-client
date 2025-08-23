@@ -115,10 +115,31 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { packageApi } from '@/api/user'
+import { packageApi, userApi } from '@/api/user'
 import { BACKEND_CONFIG } from '@/config/backend'
 
 const router = useRouter()
+
+// 用户信息
+const currentUser = ref<any>(null)
+const isLoadingUser = ref(false)
+
+// 获取当前用户信息
+const fetchCurrentUser = async () => {
+  if (isLoadingUser.value) return
+  isLoadingUser.value = true
+
+  try {
+    const response = await userApi.getCurrentUser()
+    if (response && response.data) {
+      currentUser.value = response.data
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  } finally {
+    isLoadingUser.value = false
+  }
+}
 
 // 响应式数据
 const searchPackageName = ref('')
@@ -186,6 +207,7 @@ const isInitialized = ref(false)
 
 onMounted(() => {
   if (!isInitialized.value) {
+    fetchCurrentUser()
     fetchPackages()
     isInitialized.value = true
   }
@@ -214,8 +236,48 @@ const handleReset = () => {
   ElMessage.success('筛选条件已重置')
 }
 
-const addToCart = (packageItem: any) => {
-  ElMessage.success(`已将 ${packageItem.remark || '权益包'} 加入购物车`)
+const addToCart = async (packageItem: any) => {
+  if (!currentUser.value || !currentUser.value.id) {
+    ElMessage.error('请先登录')
+    return
+  }
+
+  try {
+    const now = new Date().toISOString()
+    const cartData = {
+      cartItems: [
+        {
+          cartId: 0,
+          createTime: now,
+          id: 0,
+          itemId: packageItem.id,
+          itemImage: packageItem.packageImagePath || '',
+          itemName: packageItem.packageName || packageItem.remark || '权益包',
+          itemType: 2, // 2表示权益包
+          pointPrice: packageItem.price || 0,
+          quantity: 1,
+          updateTime: now,
+          userId: currentUser.value.id,
+        },
+      ],
+      createTime: now,
+      id: 0,
+      status: 1,
+      totalSelectedPoints: packageItem.price || 0,
+      updateTime: now,
+      userId: currentUser.value.id,
+    }
+
+    const response = await userApi.createShoppingCart(cartData)
+    if (response && response.data !== undefined) {
+      ElMessage.success(`已将 ${packageItem.remark || '权益包'} 加入购物车`)
+    } else {
+      ElMessage.error('加入购物车失败，请重试')
+    }
+  } catch (error: any) {
+    console.error('加入购物车失败:', error)
+    ElMessage.error('加入购物车失败，请重试')
+  }
 }
 
 const handleSizeChange = (size: number) => {

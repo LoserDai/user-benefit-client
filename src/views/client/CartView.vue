@@ -131,6 +131,27 @@ import { BACKEND_CONFIG } from '@/config/backend'
 
 const router = useRouter()
 
+// 用户信息
+const currentUser = ref<any>(null)
+const isLoadingUser = ref(false)
+
+// 获取当前用户信息
+const fetchCurrentUser = async () => {
+  if (isLoadingUser.value) return
+  isLoadingUser.value = true
+
+  try {
+    const response = await userApi.getCurrentUser()
+    if (response && response.data) {
+      currentUser.value = response.data
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  } finally {
+    isLoadingUser.value = false
+  }
+}
+
 // 响应式数据
 const selectAll = ref(false)
 const isLoading = ref(false)
@@ -221,9 +242,50 @@ const removeItem = async (item: CartItem) => {
   }
 }
 
-const addToCart = (item: any) => {
-  // TODO: 调用后端添加购物车接口
-  ElMessage.success(`已将 ${item.productName || item.item_name} 加入购物车`)
+const addToCart = async (item: any) => {
+  if (!currentUser.value || !currentUser.value.id) {
+    ElMessage.error('请先登录')
+    return
+  }
+
+  try {
+    const now = new Date().toISOString()
+    const cartData = {
+      cartItems: [
+        {
+          cartId: 0,
+          createTime: now,
+          id: 0,
+          itemId: item.id,
+          itemImage: item.productImagePath || '',
+          itemName: item.productName || '权益产品',
+          itemType: 1, // 1表示权益产品
+          pointPrice: item.price || 0,
+          quantity: 1,
+          updateTime: now,
+          userId: currentUser.value.id,
+        },
+      ],
+      createTime: now,
+      id: 0,
+      status: 1,
+      totalSelectedPoints: item.price || 0,
+      updateTime: now,
+      userId: currentUser.value.id,
+    }
+
+    const response = await userApi.createShoppingCart(cartData)
+    if (response && response.data !== undefined) {
+      ElMessage.success(`已将 ${item.productName || '权益产品'} 加入购物车`)
+      // 加入购物车成功后，自动刷新购物车数据
+      await fetchShoppingCart()
+    } else {
+      ElMessage.error('加入购物车失败，请重试')
+    }
+  } catch (error: any) {
+    console.error('加入购物车失败:', error)
+    ElMessage.error('加入购物车失败，请重试')
+  }
 }
 
 const checkout = () => {
@@ -320,7 +382,7 @@ const getItemTypeText = (itemType: number) => {
     case 2:
       return '权益包'
     case 3:
-      return '其他类型'
+      return '秒杀商品'
     default:
       return '未知类型'
   }
@@ -334,14 +396,15 @@ const getItemTypeTagType = (itemType: number) => {
     case 2:
       return 'success'
     case 3:
-      return 'info'
-    default:
       return 'warning'
+    default:
+      return 'primary'
   }
 }
 
 // 组件挂载时获取购物车数据和推荐产品
 onMounted(() => {
+  fetchCurrentUser()
   fetchShoppingCart()
   fetchRecommendedProducts()
 })
