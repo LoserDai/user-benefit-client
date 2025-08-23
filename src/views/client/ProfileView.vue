@@ -294,23 +294,25 @@ const fetchPointsAndBalance = async () => {
 const fetchPointsHistory = async () => {
   // 检查用户ID是否有效
   if (!userInfo.value.id || userInfo.value.id === '未知') {
-    console.log('用户ID无效，跳过积分记录获取')
     return
   }
 
   isLoadingPoints.value = true
   try {
-    const response = await userApi.queryAllPointTransaction({
+    const requestParams = {
       userId: Number(userInfo.value.id),
       pageNum: pagination.value.pageNum,
       pageSize: pagination.value.pageSize,
       sortField: 'createTime',
       sortOrder: 'desc',
-    })
+    }
+
+    const response = await userApi.queryAllPointTransaction(requestParams)
+
     if (response && response.data) {
       pointsHistory.value = response.data.data || []
-      // 更新分页总数 - 使用过滤后的数据长度
-      pagination.value.total = filteredPointsHistory.value.length
+      // 更新分页总数 - 使用后端返回的总数，而不是前端过滤后的数据长度
+      pagination.value.total = response.data.total || 0
     }
   } catch (error: any) {
     console.error('获取积分记录失败:', error)
@@ -327,7 +329,17 @@ const handleMenuSelect = (key: string) => {
   // 当选择积分管理时，调用查询积分和余额接口
   if (key === 'points') {
     fetchPointsAndBalance()
-    fetchPointsHistory() // 选择积分管理时也加载积分记录
+    // 选择积分管理时也加载积分记录，确保用户ID有效
+    if (userInfo.value.id && userInfo.value.id !== '未知') {
+      fetchPointsHistory()
+    } else {
+      // 如果用户ID还没有，等待一下再尝试
+      setTimeout(() => {
+        if (userInfo.value.id && userInfo.value.id !== '未知') {
+          fetchPointsHistory()
+        }
+      }, 200)
+    }
   }
 }
 
@@ -469,6 +481,7 @@ const getChangeTypeTagType = (type: number) => {
 // 分页相关方法
 const handleSizeChange = (val: number) => {
   pagination.value.pageSize = val
+  pagination.value.pageNum = 1 // 切换每页大小时重置到第一页
   fetchPointsHistory()
 }
 
@@ -480,7 +493,13 @@ const handleCurrentChange = (val: number) => {
 // 组件挂载时获取用户信息
 onMounted(async () => {
   await fetchCurrentUser() // 先获取用户信息
-  fetchPointsHistory() // 用户信息获取完成后再加载积分记录
+  // 用户信息获取完成后再加载积分记录
+  // 延迟一下确保用户ID已经设置
+  setTimeout(() => {
+    if (userInfo.value.id && userInfo.value.id !== '未知') {
+      fetchPointsHistory()
+    }
+  }, 100)
 })
 </script>
 
