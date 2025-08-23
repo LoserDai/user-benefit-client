@@ -77,15 +77,12 @@
                 <!-- 已售和星级评分已移除 -->
               </div>
               <div class="product-price">
-                <span class="current-price">Coin: {{ product.price }}</span>
+                <span class="current-price">Points: {{ product.price }}</span>
                 <!-- 无原价、折扣等字段，隐藏 -->
               </div>
               <div class="product-actions">
                 <el-button type="primary" size="small" @click.stop="addToCart(product)">
                   加入购物车
-                </el-button>
-                <el-button type="danger" size="small" @click.stop="buyNow(product)">
-                  立即购买
                 </el-button>
               </div>
             </div>

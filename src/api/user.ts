@@ -130,6 +130,21 @@ export const userApi = {
   }) => {
     return api.post('/swapOrder/saveSwapOrder', data)
   },
+
+  // 查看购物车
+  showShoppingCart: (params?: any) => {
+    return api.post('/shoppingCart/showShoppingCart', { ...params, status: 1 })
+  },
+
+  // 清空购物车
+  clearShoppingCart: () => {
+    return api.post('/shoppingCart/clearShoppingCart')
+  },
+
+  // 删除购物车商品
+  deletedShoppingCart: (data: { id: number; userId: number }) => {
+    return api.post('/cartItem/deletedShoppingCart', data)
+  },
 }
 
 // 产品相关接口

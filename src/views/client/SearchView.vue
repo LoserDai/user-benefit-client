@@ -78,7 +78,6 @@
                 <el-button type="primary" size="small" @click.stop="addToCart(item)">
                   加入购物车
                 </el-button>
-                <el-button size="small" @click.stop="buyNow(item)"> 立即购买 </el-button>
               </div>
             </div>
           </el-card>

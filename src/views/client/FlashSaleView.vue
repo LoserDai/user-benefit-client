@@ -38,7 +38,7 @@
             clearable
             @keyup.enter="handleSearch"
           >
-            <template #prefix>Coin</template>
+            <template #prefix>Points</template>
           </el-input>
         </el-col>
       </el-row>
@@ -86,7 +86,7 @@
               <p class="item-desc">{{ activity.description || '暂无描述' }}</p>
 
               <div class="flash-sale-price">
-                <span class="current-price">Coin: {{ activity.price || 0 }}</span>
+                <span class="current-price">Points: {{ activity.price || 0 }}</span>
                 <span v-if="activity.discountValue" class="discount"
                   >{{ activity.discountValue }}折</span
                 >
@@ -104,9 +104,8 @@
                   :disabled="!isActivityActive(activity)"
                   @click="buyFlashSale(activity)"
                 >
-                  {{ isActivityActive(activity) ? '立即抢购' : '活动结束' }}
+                  {{ isActivityActive(activity) ? '加入购物车' : '活动结束' }}
                 </el-button>
-                <el-button @click="addToCart(activity)"> 加入购物车 </el-button>
               </div>
             </div>
           </el-card>
@@ -579,15 +578,13 @@ onUnmounted(() => {
 
 .flash-sale-actions {
   display: flex;
-  gap: 8px;
   margin-top: auto;
   padding-top: 12px;
   justify-content: center;
 }
 
 .flash-sale-actions .el-button {
-  flex: 1;
-  max-width: 120px;
+  width: 140px;
   height: 36px;
   font-weight: 500;
   border-radius: 6px;

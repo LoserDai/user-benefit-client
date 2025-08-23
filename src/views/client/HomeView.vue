@@ -65,7 +65,6 @@ const banners = ref<Banner[]>([
     id: 2,
     title: '限时秒杀活动',
     description: '精选商品限时秒杀，错过再等一年',
-    // buttonText: '立即抢购',
     image: '/src/assets/banner_2.png',
   },
   {
@@ -103,7 +102,7 @@ const quickAccess = ref<QuickAccessItem[]>([
     id: 4,
     title: '积分兑换',
     description: '积分兑换好礼',
-    icon: 'Coin',
+    icon: 'Points',
     route: '/points',
   },
 ])
@@ -374,14 +373,11 @@ const handleViewMore = (route: string) => {
               <p class="product-desc">{{ product.remark || '暂无描述' }}</p>
 
               <div class="product-price">
-                <span class="current-price">Coin: {{ product.price || 0 }}</span>
+                <span class="current-price">Points: {{ product.price || 0 }}</span>
               </div>
               <div class="product-actions">
                 <el-button type="primary" size="small" @click.stop="addToCart(product)">
                   加入购物车
-                </el-button>
-                <el-button type="success" size="small" @click.stop="buyNow(product)">
-                  立即购买
                 </el-button>
               </div>
             </div>
@@ -440,9 +436,13 @@ const handleViewMore = (route: string) => {
             </div>
             <div class="package-footer">
               <div class="package-price">
-                <span class="current-price">Coin: {{ pkg.price || 0 }}</span>
+                <span class="current-price">Points: {{ pkg.price || 0 }}</span>
               </div>
-              <el-button type="primary" @click.stop="buyPackage(pkg)"> 立即购买 </el-button>
+              <div class="package-actions">
+                <el-button type="primary" size="small" @click.stop="addToCart(pkg)">
+                  加入购物车
+                </el-button>
+              </div>
             </div>
           </el-card>
         </el-col>
@@ -497,7 +497,7 @@ const handleViewMore = (route: string) => {
             <div class="flash-sale-info">
               <h3>{{ item.activityName || '秒杀活动' }}</h3>
               <div class="flash-sale-price">
-                <span class="current-price">Coin: {{ item.price || 0 }}</span>
+                <span class="current-price">Points: {{ item.price || 0 }}</span>
                 <span v-if="item.discountValue" class="discount">{{ item.discountValue }}折</span>
               </div>
               <div class="activity-meta">
@@ -505,7 +505,7 @@ const handleViewMore = (route: string) => {
                 <span class="meta-item">结束: {{ formatTime(item.endTime) }}</span>
               </div>
               <el-button type="danger" size="small" @click.stop="buyFlashSale(item)">
-                立即抢购
+                加入购物车
               </el-button>
             </div>
           </el-card>
@@ -728,7 +728,7 @@ const handleViewMore = (route: string) => {
 .package-card {
   cursor: pointer;
   transition: all 0.3s;
-  height: 350px;
+  height: 380px;
   display: flex;
   flex-direction: column;
   border-radius: 8px;
@@ -797,6 +797,7 @@ const handleViewMore = (route: string) => {
   display: flex;
   flex-direction: column;
   padding: 0 12px;
+  margin-bottom: 8px;
 }
 
 .package-content p {
@@ -834,12 +835,23 @@ const handleViewMore = (route: string) => {
   border-top: 1px solid #e4e7ed;
 }
 
-.package-footer .el-button {
+.package-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.package-actions .el-button {
   border-radius: 6px;
   font-weight: 600;
   height: 34px;
   padding: 0 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.package-actions .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .flash-sale-card {

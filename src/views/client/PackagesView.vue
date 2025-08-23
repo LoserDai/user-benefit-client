@@ -77,15 +77,12 @@
               </div>
 
               <div class="package-price">
-                <span class="current-price">Coin: {{ packageItem.price || 0 }}</span>
+                <span class="current-price">Points: {{ packageItem.price || 0 }}</span>
               </div>
 
               <div class="package-actions">
                 <el-button type="primary" size="small" @click.stop="addToCart(packageItem)">
                   加入购物车
-                </el-button>
-                <el-button type="danger" size="small" @click.stop="buyNow(packageItem)">
-                  立即购买
                 </el-button>
               </div>
               <!-- 调试信息 -->
