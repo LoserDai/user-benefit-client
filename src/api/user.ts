@@ -188,6 +188,26 @@ export const userApi = {
   }) => {
     return api.post('/orderMain/queryOrderMain', params)
   },
+
+  // 查询用户地址
+  queryAllUserAddress: (params: {
+    userId?: number
+    id?: number
+    pageNum?: number
+    pageSize?: number
+  }) => {
+    return api.post('/userAddress/queryAllUserAddress', params)
+  },
+
+  // 取消订单
+  cancelOrderMain: (params: { cancelReason: string; orderNo: string; userId: number }) => {
+    return api.post('/orderMain/cancelOrderMain', params)
+  },
+
+  // 支付订单
+  payOrderMain: (orderNo: string) => {
+    return api.post(`/orderMain/payOrderMain?orderNo=${encodeURIComponent(orderNo)}`)
+  },
 }
 
 // 产品相关接口

@@ -28,8 +28,22 @@
       <el-card v-for="order in filteredOrders" :key="order.id" class="order-card">
         <div class="order-header">
           <div class="order-info">
-            <span class="order-number">订单号：{{ formatOrderNumber(order.orderId) }}</span>
+            <span class="order-number"
+              >订单号：{{ order.orderNo || formatOrderNumber(order.orderId) }}</span
+            >
             <span class="order-date">{{ formatOrderDate() }}</span>
+            <div v-if="order.addressInfo" class="order-address">
+              <span class="address-label">收货地址：</span>
+              <span class="address-content">
+                {{ order.addressInfo.receiverName }} {{ order.addressInfo.receiverPhone }}
+                {{ order.addressInfo.province }} {{ order.addressInfo.city }}
+                {{ order.addressInfo.district }}
+                {{ order.addressInfo.detailAddress }}
+                <span v-if="order.addressInfo.postalCode"
+                  >邮编：{{ order.addressInfo.postalCode }}</span
+                >
+              </span>
+            </div>
           </div>
           <div class="order-status">
             <el-tag :type="getStatusType(order.status)">{{ getStatusText(order.status) }}</el-tag>
@@ -148,6 +162,108 @@ const isLoading = ref(false)
 
 // 订单数据
 const orders = ref<any[]>([])
+// 地址数据缓存
+const addressCache = ref<Map<string, any>>(new Map())
+// 处理后的订单数据（包含地址信息）
+const processedOrders = ref<any[]>([])
+
+// 获取地址信息
+const fetchAddressInfo = async (userId: number, addressId: number) => {
+  // 使用userId和addressId组合作为缓存key
+  const cacheKey = `userAddress_${userId}_${addressId}`
+
+  if (addressCache.value.has(cacheKey)) {
+    return addressCache.value.get(cacheKey)
+  }
+
+  try {
+    const response = await userApi.queryAllUserAddress({
+      userId: userId,
+      id: addressId, // 将addressId作为id参数传递
+      pageNum: 1,
+      pageSize: 100,
+    })
+
+    if (response && response.data && response.data.data) {
+      // 从地址数组中找到匹配addressId的地址
+      // 注意：addressId可能是字符串，需要转换为数字进行比较
+      const matchedAddress = response.data.data.find((addr: any) => addr.id === Number(addressId))
+      if (matchedAddress) {
+        // 缓存该地址信息
+        addressCache.value.set(cacheKey, matchedAddress)
+        return matchedAddress
+      }
+    }
+  } catch (error) {
+    console.error('获取地址信息失败:', error)
+  }
+
+  return null
+}
+
+// 处理订单数据，获取地址信息
+const processOrdersWithAddress = async () => {
+  if (!orders.value || orders.value.length === 0) {
+    processedOrders.value = []
+    return
+  }
+
+  // 按orderId分组
+  const orderGroups = new Map<number, any[]>()
+
+  orders.value.forEach((order) => {
+    const orderId = order.orderId
+    if (!orderGroups.has(orderId)) {
+      orderGroups.set(orderId, [])
+    }
+    orderGroups.get(orderId)!.push(order)
+  })
+
+  // 转换为订单数组，每个订单包含多个商品
+  const groupedOrders: any[] = []
+
+  for (const [orderId, items] of orderGroups) {
+    // 取第一个商品的信息作为订单基本信息
+    const firstItem = items[0]
+
+    // 计算订单总积分和总数量
+    const totalPoints = items.reduce((sum, item) => sum + (item.totalPoint || 0), 0)
+    const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0)
+
+    // 获取地址信息
+    let addressInfo = null
+    if (firstItem.addressId && firstItem.userId) {
+      // 直接获取该订单对应的地址信息
+      addressInfo = await fetchAddressInfo(firstItem.userId, firstItem.addressId)
+    }
+
+    // 创建分组后的订单对象
+    const groupedOrder = {
+      orderId: orderId,
+      orderNo: firstItem.orderNo, // 订单号
+      addressId: firstItem.addressId, // 收货地址ID
+      addressInfo: addressInfo, // 地址详细信息
+      status: firstItem.status,
+      userId: firstItem.userId,
+      // 商品列表
+      items: items.map((item) => ({
+        id: item.id,
+        itemType: item.itemType,
+        itemName: item.itemName,
+        pointPrice: item.pointPrice,
+        quantity: item.quantity,
+        totalPoint: item.totalPoint,
+      })),
+      // 订单总计
+      totalPoint: totalPoints,
+      totalQuantity: totalQuantity,
+    }
+
+    groupedOrders.push(groupedOrder)
+  }
+
+  processedOrders.value = groupedOrders
+}
 
 // 获取订单数据
 const fetchOrders = async () => {
@@ -174,6 +290,8 @@ const fetchOrders = async () => {
     if (response && response.data) {
       orders.value = response.data.data || []
       totalOrders.value = response.data.total || 0
+      // 处理订单数据，获取地址信息
+      await processOrdersWithAddress()
     }
   } catch (error: any) {
     console.error('获取订单数据失败:', error)
@@ -183,57 +301,9 @@ const fetchOrders = async () => {
   }
 }
 
-// 计算属性：按orderId分组订单
+// 计算属性：使用处理后的订单数据
 const filteredOrders = computed(() => {
-  if (!orders.value || orders.value.length === 0) {
-    return []
-  }
-
-  // 按orderId分组
-  const orderGroups = new Map<number, any[]>()
-
-  orders.value.forEach((order) => {
-    const orderId = order.orderId
-    if (!orderGroups.has(orderId)) {
-      orderGroups.set(orderId, [])
-    }
-    orderGroups.get(orderId)!.push(order)
-  })
-
-  // 转换为订单数组，每个订单包含多个商品
-  const groupedOrders: any[] = []
-
-  orderGroups.forEach((items, orderId) => {
-    // 取第一个商品的信息作为订单基本信息
-    const firstItem = items[0]
-
-    // 计算订单总积分和总数量
-    const totalPoints = items.reduce((sum, item) => sum + (item.totalPoint || 0), 0)
-    const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0)
-
-    // 创建分组后的订单对象
-    const groupedOrder = {
-      orderId: orderId,
-      status: firstItem.status,
-      userId: firstItem.userId,
-      // 商品列表
-      items: items.map((item) => ({
-        id: item.id,
-        itemType: item.itemType,
-        itemName: item.itemName,
-        pointPrice: item.pointPrice,
-        quantity: item.quantity,
-        totalPoint: item.totalPoint,
-      })),
-      // 订单总计
-      totalPoint: totalPoints,
-      totalQuantity: totalQuantity,
-    }
-
-    groupedOrders.push(groupedOrder)
-  })
-
-  return groupedOrders
+  return processedOrders.value
 })
 
 // 方法
@@ -300,22 +370,67 @@ const getEmptyMessage = () => {
   return `暂无${statusText}订单`
 }
 
-const payOrder = (order: any) => {
-  ElMessage.success(`正在跳转到支付页面，订单号：${formatOrderNumber(order.orderId)}`)
-  // 这里应该跳转到支付页面
+const payOrder = async (order: any) => {
+  try {
+    const orderNumber = order.orderNo || formatOrderNumber(order.orderId)
+
+    // 获取用户余额信息
+    let balanceInfo = null
+    try {
+      const balanceResponse = await userApi.queryPoints('B/P')
+      if (balanceResponse && balanceResponse.data) {
+        balanceInfo = balanceResponse.data
+      }
+    } catch (error) {
+      console.error('获取余额信息失败:', error)
+    }
+
+    // 构建确认弹框内容
+    let confirmMessage = `确定要支付订单 ${orderNumber} 吗？\n`
+    confirmMessage += `📋 订单信息：\n`
+    confirmMessage += `   订单总金额：${order.totalPoint} Points\n`
+
+    if (balanceInfo) {
+      confirmMessage += `💰 账户余额：\n`
+      confirmMessage += `   当前余额：${balanceInfo.balance || 0} Balance\n`
+      confirmMessage += `   当前积分：${balanceInfo.points || 0} Points`
+    }
+
+    // 弹出确认框
+    await ElMessageBox.confirm(confirmMessage, '确认支付', {
+      confirmButtonText: '确认支付',
+      cancelButtonText: '取消',
+      type: 'warning',
+      dangerouslyUseHTMLString: false,
+    })
+
+    // 用户确认支付，调用后端接口
+    const response = await userApi.payOrderMain(orderNumber)
+
+    if (response && response.data) {
+      ElMessage.success('支付成功！')
+      // 刷新订单数据
+      await fetchOrders()
+    } else {
+      ElMessage.error('支付失败，请重试')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      // 不是用户取消操作，而是其他错误
+      console.error('支付失败:', error)
+      ElMessage.error('支付失败，请重试')
+    }
+  }
 }
 
 const confirmReceive = async (order: any) => {
   try {
-    await ElMessageBox.confirm(
-      `确认已收到订单 ${formatOrderNumber(order.orderId)} 的商品吗？`,
-      '确认收货',
-      {
-        confirmButtonText: '确认',
-        cancelButtonText: '取消',
-        type: 'warning',
-      },
-    )
+    const orderNumber = order.orderNo || formatOrderNumber(order.orderId)
+    await ElMessageBox.confirm(`确认已收到订单 ${orderNumber} 的商品吗？`, '确认收货', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
 
     order.status = 3 // 已完成
     ElMessage.success('确认收货成功')
@@ -325,26 +440,56 @@ const confirmReceive = async (order: any) => {
 }
 
 const viewOrderDetail = (order: any) => {
-  ElMessage.success(`查看订单详情：${formatOrderNumber(order.orderId)}`)
+  const orderNumber = order.orderNo || formatOrderNumber(order.orderId)
+  ElMessage.success(`查看订单详情：${orderNumber}`)
   // 这里应该跳转到订单详情页面
 }
 
 const cancelOrder = async (order: any) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要取消订单 ${formatOrderNumber(order.orderId)} 吗？`,
-      '确认取消',
+    // 弹出输入框让用户输入取消理由
+    const { value: cancelReason } = await ElMessageBox.prompt(
+      '请输入取消订单的理由（必填）：',
+      '取消订单',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning',
+        inputType: 'textarea',
+        inputPlaceholder: '请输入取消理由...',
+        inputValidator: (value) => {
+          if (!value || value.trim() === '') {
+            return '取消理由不能为空'
+          }
+          return true
+        },
+        inputErrorMessage: '取消理由不能为空',
       },
     )
 
-    order.status = 4 // 已取消
-    ElMessage.success('订单已取消')
-  } catch {
-    // 用户取消操作
+    if (cancelReason && cancelReason.trim()) {
+      // 调用后端接口取消订单
+      const orderNumber = order.orderNo || formatOrderNumber(order.orderId)
+      const response = await userApi.cancelOrderMain({
+        cancelReason: cancelReason.trim(),
+        orderNo: orderNumber,
+        userId: currentUser.value.id,
+      })
+
+      if (response && response.data) {
+        order.status = 4 // 已取消
+        ElMessage.success('订单已成功取消')
+        // 刷新订单数据
+        await fetchOrders()
+      } else {
+        ElMessage.error('取消订单失败，请重试')
+      }
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      // 不是用户取消操作，而是其他错误
+      console.error('取消订单失败:', error)
+      ElMessage.error('取消订单失败，请重试')
+    }
   }
 }
 
@@ -453,6 +598,27 @@ const handleCurrentChange = (page: number) => {
 .order-date {
   font-size: 14px;
   color: #909399;
+}
+
+.order-address {
+  margin-top: 8px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 3px solid #409eff;
+}
+
+.address-label {
+  font-size: 12px;
+  color: #606266;
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+.address-content {
+  font-size: 12px;
+  color: #303133;
+  line-height: 1.4;
 }
 
 .order-status {
