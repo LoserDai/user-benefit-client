@@ -124,32 +124,16 @@ const handleQuickAccess = (item: QuickAccessItem) => {
   router.push(item.route)
 }
 
-const handleProductClick = (product: any) => {
-  router.push(`/products/${product.id}`)
-}
-
 const addToCart = (product: any) => {
   ElMessage.success(`已将 ${product.productName || '权益产品'} 加入购物车`)
 }
 
-const buyNow = (product: any) => {
-  ElMessage.success(`正在购买: ${product.productName || '权益产品'}`)
+const addPackageToCart = (pkg: any) => {
+  ElMessage.success(`已将 ${pkg.packageName || pkg.remark || '权益包'} 加入购物车`)
 }
 
-const handlePackageClick = (pkg: any) => {
-  router.push(`/packages/${pkg.id}`)
-}
-
-const buyPackage = (pkg: any) => {
-  ElMessage.success(`正在购买: ${pkg.packageName || pkg.remark || '权益包'}`)
-}
-
-const handleFlashSaleClick = (item: any) => {
-  router.push(`/flash-sale/${item.id}`)
-}
-
-const buyFlashSale = (item: any) => {
-  ElMessage.success(`正在抢购: ${item.activityName || '秒杀活动'}`)
+const addFlashSaleToCart = (item: any) => {
+  ElMessage.success(`已将 ${item.activityName || '秒杀活动'} 加入购物车`)
 }
 
 // 获取热门权益产品
@@ -351,7 +335,7 @@ const handleViewMore = (route: string) => {
       <!-- 产品列表 -->
       <el-row v-else :gutter="20">
         <el-col :span="6" v-for="product in hotProducts" :key="product.id">
-          <el-card class="product-card" @click="handleProductClick(product)">
+          <el-card class="product-card">
             <!-- 产品图片 -->
             <div class="image-container">
               <img
@@ -407,7 +391,7 @@ const handleViewMore = (route: string) => {
       <!-- 权益包列表 -->
       <el-row v-else :gutter="20">
         <el-col :span="8" v-for="pkg in recommendedPackages" :key="pkg.id">
-          <el-card class="package-card" @click="handlePackageClick(pkg)">
+          <el-card class="package-card">
             <!-- 权益包图片 -->
             <div class="package-image-container">
               <img
@@ -439,7 +423,7 @@ const handleViewMore = (route: string) => {
                 <span class="current-price">Points: {{ pkg.price || 0 }}</span>
               </div>
               <div class="package-actions">
-                <el-button type="primary" size="small" @click.stop="addToCart(pkg)">
+                <el-button type="primary" size="small" @click.stop="addPackageToCart(pkg)">
                   加入购物车
                 </el-button>
               </div>
@@ -470,7 +454,7 @@ const handleViewMore = (route: string) => {
       <!-- 秒杀活动列表 -->
       <el-row v-else :gutter="20">
         <el-col :span="6" v-for="item in flashSaleItems" :key="item.id">
-          <el-card class="flash-sale-card" @click="handleFlashSaleClick(item)">
+          <el-card class="flash-sale-card">
             <div class="flash-sale-timer">
               <el-tag type="danger">限时秒杀</el-tag>
               <div class="countdown">
@@ -504,7 +488,7 @@ const handleViewMore = (route: string) => {
                 <span class="meta-item">开始: {{ formatTime(item.startTime) }}</span>
                 <span class="meta-item">结束: {{ formatTime(item.endTime) }}</span>
               </div>
-              <el-button type="danger" size="small" @click.stop="buyFlashSale(item)">
+              <el-button type="danger" size="small" @click.stop="addFlashSaleToCart(item)">
                 加入购物车
               </el-button>
             </div>
@@ -609,7 +593,6 @@ const handleViewMore = (route: string) => {
 }
 
 .product-card {
-  cursor: pointer;
   transition: all 0.3s;
   height: 420px;
   display: flex;
@@ -726,7 +709,6 @@ const handleViewMore = (route: string) => {
 }
 
 .package-card {
-  cursor: pointer;
   transition: all 0.3s;
   height: 380px;
   display: flex;
@@ -855,7 +837,6 @@ const handleViewMore = (route: string) => {
 }
 
 .flash-sale-card {
-  cursor: pointer;
   transition: all 0.3s;
   height: 400px;
   display: flex;

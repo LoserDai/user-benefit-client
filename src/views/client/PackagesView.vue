@@ -51,7 +51,7 @@
           :key="packageItem.id"
           :span="filteredPackages.length === 1 ? 8 : 6"
         >
-          <el-card class="package-card" @click="handlePackageClick(packageItem)">
+          <el-card class="package-card">
             <!-- 权益包图片 -->
             <div class="image-container">
               <img
@@ -214,16 +214,8 @@ const handleReset = () => {
   ElMessage.success('筛选条件已重置')
 }
 
-const handlePackageClick = (packageItem: any) => {
-  router.push(`/packages/${packageItem.id}`)
-}
-
 const addToCart = (packageItem: any) => {
   ElMessage.success(`已将 ${packageItem.remark || '权益包'} 加入购物车`)
-}
-
-const buyNow = (packageItem: any) => {
-  ElMessage.success(`正在购买: ${packageItem.remark || '权益包'}`)
 }
 
 const handleSizeChange = (size: number) => {
@@ -301,7 +293,6 @@ const handleImageError = (event: Event) => {
 }
 
 .package-card {
-  cursor: pointer;
   transition: all 0.3s;
   min-height: 450px;
   width: 100%;

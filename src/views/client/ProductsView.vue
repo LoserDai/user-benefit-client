@@ -51,7 +51,7 @@
           :key="product.id"
           :span="filteredProducts.length === 1 ? 8 : 6"
         >
-          <el-card class="product-card" @click="handleProductClick(product)">
+          <el-card class="product-card">
             <!-- 产品角标可根据需要自定义，这里暂不显示 -->
             <!-- <div class="product-badge" v-if="product.badge">
               <el-tag :type="product.badgeType">{{ product.badge }}</el-tag>
@@ -237,16 +237,8 @@ const handleSearch = () => {
   ElMessage.success('搜索完成')
 }
 
-const handleProductClick = (product: any) => {
-  router.push(`/products/${product.id}`)
-}
-
 const addToCart = (product: any) => {
   ElMessage.success(`已将 ${product.productName} 加入购物车`)
-}
-
-const buyNow = (product: any) => {
-  ElMessage.success(`正在购买: ${product.productName}`)
 }
 
 const handleSizeChange = (size: number) => {
@@ -311,7 +303,6 @@ const handleImageError = (event: Event) => {
 }
 
 .product-card {
-  cursor: pointer;
   transition: all 0.3s;
   height: 400px;
   width: 100%;

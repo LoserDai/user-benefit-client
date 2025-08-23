@@ -55,7 +55,7 @@
     <div v-if="searchResults.length > 0" class="search-results">
       <el-row :gutter="20">
         <el-col :span="6" v-for="item in searchResults" :key="item.id">
-          <el-card class="result-card" @click="handleItemClick(item)">
+          <el-card class="result-card">
             <div class="item-badge" v-if="item.badge">
               <el-tag :type="item.badgeType">{{ item.badge }}</el-tag>
             </div>
@@ -296,20 +296,8 @@ const searchByTag = (tag: string) => {
   handleSearch()
 }
 
-const handleItemClick = (item: any) => {
-  if (item.type === 'product') {
-    router.push(`/products/${item.id}`)
-  } else {
-    router.push(`/packages/${item.id}`)
-  }
-}
-
 const addToCart = (item: any) => {
   ElMessage.success(`已将 ${item.name} 加入购物车`)
-}
-
-const buyNow = (item: any) => {
-  ElMessage.success(`正在购买: ${item.name}`)
 }
 
 const handleSizeChange = (size: number) => {
@@ -368,7 +356,6 @@ onMounted(() => {
 }
 
 .result-card {
-  cursor: pointer;
   transition: all 0.3s;
   height: 400px;
   margin-bottom: 20px;
