@@ -170,6 +170,24 @@ export const userApi = {
   }) => {
     return api.post('/shoppingCart/createShoppingCart', data)
   },
+
+  // 创建订单
+  createOrderMain: () => {
+    return api.post('/orderMain/createOrderMain')
+  },
+
+  // 查询订单
+  queryOrderMain: (params: {
+    userId?: number
+    status?: number
+    orderId?: number
+    itemType?: number
+    itemName?: string
+    pageNum: number
+    pageSize: number
+  }) => {
+    return api.post('/orderMain/queryOrderMain', params)
+  },
 }
 
 // 产品相关接口

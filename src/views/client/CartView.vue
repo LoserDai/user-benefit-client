@@ -288,15 +288,26 @@ const addToCart = async (item: any) => {
   }
 }
 
-const checkout = () => {
+const checkout = async () => {
   if (selectedCount.value === 0) {
     ElMessage.warning('请选择要结算的商品')
     return
   }
 
-  ElMessage.success('正在跳转到结算页面...')
-  // 这里应该跳转到结算页面
-  // router.push('/checkout')
+  try {
+    // 调用后端创建订单接口
+    const response = await userApi.createOrderMain()
+    if (response && response.data !== undefined) {
+      ElMessage.success('订单创建成功，正在跳转到订单页面...')
+      // 跳转到订单页面
+      router.push('/orders')
+    } else {
+      ElMessage.error('订单创建失败，请重试')
+    }
+  } catch (error: any) {
+    console.error('创建订单失败:', error)
+    ElMessage.error('创建订单失败，请重试')
+  }
 }
 
 const clearCart = async () => {
