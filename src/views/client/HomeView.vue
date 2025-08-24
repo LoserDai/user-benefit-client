@@ -309,20 +309,54 @@ const fetchRecommendedPackages = async () => {
   try {
     const params = {
       pageNum: 1,
-      pageSize: 3,
+      pageSize: 10, // 增加pageSize，确保有足够的数据来显示3个不同的权益包
       status: 'ACTIVE',
     }
 
     const res = await packageApi.queryPackage(params)
     console.log('推荐权益包API响应:', res)
-    recommendedPackages.value = res.data?.data || []
-    console.log('处理后的推荐权益包数据:', recommendedPackages.value)
+
+    // 处理数据：合并相同id和packageName的数据
+    const rawData = res.data?.data || []
+    const mergedPackages = mergePackageData(rawData)
+
+    // 只取前3个权益包，保持页面整洁
+    recommendedPackages.value = mergedPackages.slice(0, 3)
+    console.log('原始推荐权益包数据:', rawData)
+    console.log('合并后的推荐权益包数据:', recommendedPackages.value)
   } catch (e) {
     console.error('获取推荐权益包失败:', e)
     ElMessage.error('获取推荐权益包失败')
   } finally {
     isLoadingPackages.value = false
   }
+}
+
+// 合并相同id和packageName的权益包数据
+const mergePackageData = (rawData: any[]): any[] => {
+  const packageMap = new Map()
+
+  rawData.forEach((item) => {
+    const key = `${item.id}-${item.packageName}`
+
+    if (packageMap.has(key)) {
+      // 如果已存在，添加productName到products数组中
+      const existingPackage = packageMap.get(key)
+      if (item.productName) {
+        existingPackage.products.push(item.productName)
+      }
+    } else {
+      // 如果不存在，创建新的权益包对象
+      const newPackage = {
+        ...item,
+        products: item.productName ? [item.productName] : [],
+      }
+      packageMap.set(key, newPackage)
+    }
+  })
+
+  // 转换为数组并返回
+  return Array.from(packageMap.values())
 }
 
 // 获取限时秒杀活动
@@ -556,6 +590,23 @@ const handleViewMore = (route: string) => {
             </div>
             <div class="package-content">
               <p>{{ pkg.remark || '暂无描述' }}</p>
+
+              <!-- 显示合并后的产品名称 -->
+              <div class="package-products" v-if="pkg.products && pkg.products.length > 0">
+                <div class="products-title">包含产品：</div>
+                <div class="products-list">
+                  <el-tag
+                    v-for="product in pkg.products"
+                    :key="product"
+                    size="small"
+                    type="info"
+                    class="product-tag"
+                  >
+                    {{ product }}
+                  </el-tag>
+                </div>
+              </div>
+
               <div class="package-meta">
                 <span class="quantity">库存: {{ pkg.quantity || 0 }}</span>
               </div>
@@ -852,7 +903,7 @@ const handleViewMore = (route: string) => {
 
 .package-card {
   transition: all 0.3s;
-  height: 380px;
+  height: 460px;
   display: flex;
   flex-direction: column;
   border-radius: 8px;
@@ -868,17 +919,22 @@ const handleViewMore = (route: string) => {
 .package-image-container {
   position: relative;
   width: 100%;
-  height: 140px;
+  height: 160px;
   overflow: hidden;
   background-color: #f8f9fa;
   margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .package-image {
-  width: 100%;
-  height: 100%;
+  width: 70%;
+  height: 70%;
   object-fit: cover;
   transition: all 0.3s ease;
+  margin: auto;
+  display: block;
 }
 
 .package-image:hover {
@@ -929,11 +985,34 @@ const handleViewMore = (route: string) => {
   margin-bottom: 10px;
   font-size: 14px;
   line-height: 1.4;
-  height: 32px;
+  height: 56px;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
+}
+
+/* 产品标签样式 */
+.package-products {
+  margin-bottom: 10px;
+}
+
+.products-title {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.products-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.product-tag {
+  margin: 0;
+  font-size: 11px;
 }
 
 .package-meta {

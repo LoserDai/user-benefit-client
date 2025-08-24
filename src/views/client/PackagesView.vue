@@ -72,6 +72,25 @@
               <h3 class="package-title">{{ packageItem.packageName || '权益包' }}</h3>
               <p class="package-desc">{{ packageItem.remark || '暂无描述' }}</p>
 
+              <!-- 显示合并后的产品名称 -->
+              <div
+                class="package-products"
+                v-if="packageItem.products && packageItem.products.length > 0"
+              >
+                <div class="products-title">包含产品：</div>
+                <div class="products-list">
+                  <el-tag
+                    v-for="product in packageItem.products"
+                    :key="product"
+                    size="small"
+                    type="info"
+                    class="product-tag"
+                  >
+                    {{ product }}
+                  </el-tag>
+                </div>
+              </div>
+
               <div class="package-meta">
                 <span class="quantity">库存: {{ packageItem.quantity || 0 }}</span>
               </div>
@@ -178,9 +197,15 @@ const fetchPackages = async () => {
   try {
     const res = await packageApi.queryPackage(params)
     console.log('权益包API响应:', res)
-    packages.value = res.data?.data || []
+
+    // 处理数据：合并相同id和packageName的数据
+    const rawData = res.data?.data || []
+    const mergedPackages = mergePackageData(rawData)
+
+    packages.value = mergedPackages
     totalPackages.value = res.data?.total || 0
-    console.log('处理后的权益包数据:', packages.value)
+    console.log('原始权益包数据:', rawData)
+    console.log('合并后的权益包数据:', packages.value)
     console.log('总数:', totalPackages.value)
   } catch (e) {
     console.error('获取权益包失败:', e)
@@ -188,6 +213,33 @@ const fetchPackages = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+// 合并相同id和packageName的权益包数据
+const mergePackageData = (rawData: any[]): any[] => {
+  const packageMap = new Map()
+
+  rawData.forEach((item) => {
+    const key = `${item.id}-${item.packageName}`
+
+    if (packageMap.has(key)) {
+      // 如果已存在，添加productName到products数组中
+      const existingPackage = packageMap.get(key)
+      if (item.productName) {
+        existingPackage.products.push(item.productName)
+      }
+    } else {
+      // 如果不存在，创建新的权益包对象
+      const newPackage = {
+        ...item,
+        products: item.productName ? [item.productName] : [],
+      }
+      packageMap.set(key, newPackage)
+    }
+  })
+
+  // 转换为数组并返回
+  return Array.from(packageMap.values())
 }
 
 // 监听分页变化自动请求
@@ -356,7 +408,7 @@ const handleImageError = (event: Event) => {
 
 .package-card {
   transition: all 0.3s;
-  min-height: 450px;
+  min-height: 500px;
   width: 100%;
   margin-bottom: 20px;
   position: relative;
@@ -423,6 +475,29 @@ const handleImageError = (event: Event) => {
   height: 40px;
   overflow: hidden;
   line-height: 1.5;
+}
+
+/* 产品标签样式 */
+.package-products {
+  margin-bottom: 12px;
+}
+
+.products-title {
+  font-size: 13px;
+  color: #909399;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.products-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.product-tag {
+  margin: 0;
+  font-size: 12px;
 }
 
 .package-meta {
