@@ -85,6 +85,25 @@
               <h3>{{ activity.activityName || '秒杀活动' }}</h3>
               <p class="item-desc">{{ activity.description || '暂无描述' }}</p>
 
+              <!-- 显示合并后的权益包名称 -->
+              <div
+                class="activity-packages"
+                v-if="activity.packages && activity.packages.length > 0"
+              >
+                <div class="packages-title">包含权益包：</div>
+                <div class="packages-list">
+                  <el-tag
+                    v-for="pkg in activity.packages"
+                    :key="pkg"
+                    size="small"
+                    type="warning"
+                    class="package-tag"
+                  >
+                    {{ pkg }}
+                  </el-tag>
+                </div>
+              </div>
+
               <div class="flash-sale-price">
                 <span class="current-price">Points: {{ activity.price || 0 }}</span>
                 <span v-if="activity.discountValue" class="discount"
@@ -177,6 +196,32 @@ const isLoading = ref(false)
 const flashSaleActivities = ref<any[]>([])
 const activityCountdowns = ref<{ [key: number]: string }>({})
 
+// 合并相同id的秒杀活动数据
+const mergeActivityData = (rawData: any[]): any[] => {
+  const activityMap = new Map()
+
+  rawData.forEach((item) => {
+    const key = String(item.id)
+
+    if (activityMap.has(key)) {
+      // 如果已存在，添加packageName到packages数组中
+      const existingActivity = activityMap.get(key)
+      if (item.packageName && !existingActivity.packages.includes(item.packageName)) {
+        existingActivity.packages.push(item.packageName)
+      }
+    } else {
+      // 如果不存在，创建新的秒杀活动对象
+      const newActivity = {
+        ...item,
+        packages: item.packageName ? [item.packageName] : [],
+      }
+      activityMap.set(key, newActivity)
+    }
+  })
+
+  return Array.from(activityMap.values())
+}
+
 // 获取秒杀活动列表
 const fetchActivities = async () => {
   if (isLoading.value) return
@@ -206,13 +251,19 @@ const fetchActivities = async () => {
   try {
     const res = await activityApi.queryActivityList(params)
     console.log('秒杀活动API响应:', res)
-    flashSaleActivities.value = res.data?.data || []
+
+    // 处理数据：合并相同id的秒杀活动数据
+    const rawData = res.data?.data || []
+    const mergedActivities = mergeActivityData(rawData)
+
+    flashSaleActivities.value = mergedActivities
     totalActivities.value = res.data?.total || 0
 
     // 初始化所有活动的倒计时
     updateAllActivityCountdowns()
 
-    console.log('处理后的秒杀活动数据:', flashSaleActivities.value)
+    console.log('原始秒杀活动数据:', rawData)
+    console.log('合并后的秒杀活动数据:', flashSaleActivities.value)
     console.log('总数:', totalActivities.value)
   } catch (e) {
     console.error('获取秒杀活动失败:', e)
@@ -511,7 +562,7 @@ onUnmounted(() => {
 .flash-sale-card {
   cursor: pointer;
   transition: all 0.3s;
-  min-height: 480px;
+  min-height: 520px;
   margin-bottom: 20px;
   display: flex;
   flex-direction: column;
@@ -600,6 +651,29 @@ onUnmounted(() => {
   height: 40px;
   overflow: hidden;
   line-height: 1.5;
+}
+
+/* 秒杀活动权益包标签样式 */
+.activity-packages {
+  margin-bottom: 12px;
+}
+
+.packages-title {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.packages-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.package-tag {
+  margin: 0;
+  font-size: 11px;
 }
 
 .flash-sale-price {

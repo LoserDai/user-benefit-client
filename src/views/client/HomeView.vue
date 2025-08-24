@@ -359,6 +359,32 @@ const mergePackageData = (rawData: any[]): any[] => {
   return Array.from(packageMap.values())
 }
 
+// 合并相同id的秒杀活动数据
+const mergeActivityData = (rawData: any[]): any[] => {
+  const activityMap = new Map()
+
+  rawData.forEach((item) => {
+    const key = String(item.id)
+
+    if (activityMap.has(key)) {
+      // 如果已存在，添加packageName到packages数组中
+      const existingActivity = activityMap.get(key)
+      if (item.packageName && !existingActivity.packages.includes(item.packageName)) {
+        existingActivity.packages.push(item.packageName)
+      }
+    } else {
+      // 如果不存在，创建新的秒杀活动对象
+      const newActivity = {
+        ...item,
+        packages: item.packageName ? [item.packageName] : [],
+      }
+      activityMap.set(key, newActivity)
+    }
+  })
+
+  return Array.from(activityMap.values())
+}
+
 // 获取限时秒杀活动
 const fetchFlashSaleActivities = async () => {
   if (isLoadingFlashSale.value) return
@@ -373,8 +399,14 @@ const fetchFlashSaleActivities = async () => {
 
     const res = await activityApi.queryActivityList(params)
     console.log('限时秒杀API响应:', res)
-    flashSaleItems.value = res.data?.data || []
-    console.log('处理后的限时秒杀数据:', flashSaleItems.value)
+
+    // 处理数据：合并相同id的秒杀活动数据
+    const rawData = res.data?.data || []
+    const mergedActivities = mergeActivityData(rawData)
+
+    flashSaleItems.value = mergedActivities
+    console.log('原始限时秒杀数据:', rawData)
+    console.log('合并后的限时秒杀数据:', flashSaleItems.value)
   } catch (e) {
     console.error('获取限时秒杀失败:', e)
     ElMessage.error('获取限时秒杀失败')
@@ -646,7 +678,11 @@ const handleViewMore = (route: string) => {
 
       <!-- 秒杀活动列表 -->
       <el-row v-else :gutter="20">
-        <el-col :span="6" v-for="item in flashSaleItems" :key="item.id">
+        <el-col
+          :span="6"
+          v-for="(item, index) in flashSaleItems"
+          :key="`flash-sale-${item.id}-${index}`"
+        >
           <el-card class="flash-sale-card">
             <div class="flash-sale-timer">
               <el-tag type="danger">限时秒杀</el-tag>
@@ -673,6 +709,23 @@ const handleViewMore = (route: string) => {
 
             <div class="flash-sale-info">
               <h3>{{ item.activityName || '秒杀活动' }}</h3>
+
+              <!-- 显示合并后的权益包名称 -->
+              <div class="activity-packages" v-if="item.packages && item.packages.length > 0">
+                <div class="packages-title">包含权益包：</div>
+                <div class="packages-list">
+                  <el-tag
+                    v-for="pkg in item.packages"
+                    :key="pkg"
+                    size="small"
+                    type="warning"
+                    class="package-tag"
+                  >
+                    {{ pkg }}
+                  </el-tag>
+                </div>
+              </div>
+
               <div class="flash-sale-price">
                 <span class="current-price">Points: {{ item.price || 0 }}</span>
                 <span v-if="item.discountValue" class="discount">{{ item.discountValue }}折</span>
@@ -1059,7 +1112,7 @@ const handleViewMore = (route: string) => {
 
 .flash-sale-card {
   transition: all 0.3s;
-  height: 400px;
+  height: 440px;
   display: flex;
   flex-direction: column;
 }
@@ -1129,6 +1182,29 @@ const handleViewMore = (route: string) => {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/* 秒杀活动权益包标签样式 */
+.activity-packages {
+  margin-bottom: 12px;
+}
+
+.packages-title {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.packages-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.package-tag {
+  margin: 0;
+  font-size: 11px;
 }
 
 .flash-sale-price {
