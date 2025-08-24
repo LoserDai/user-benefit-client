@@ -172,8 +172,8 @@ export const userApi = {
   },
 
   // 创建订单
-  createOrderMain: () => {
-    return api.post('/orderMain/createOrderMain')
+  createOrderMain: (addressId: bigint) => {
+    return api.post(`/orderMain/createOrderMain?addressId=${addressId}`)
   },
 
   // 查询订单
@@ -197,6 +197,42 @@ export const userApi = {
     pageSize?: number
   }) => {
     return api.post('/userAddress/queryAllUserAddress', params)
+  },
+
+  // 更新用户地址
+  updateUserAddress: (data: {
+    id: number
+    userId: number
+    receiverName: string
+    receiverPhone: string
+    province: string
+    city: string
+    status: number
+    district?: string | null
+    detailAddress: string
+    postalCode?: string | null
+  }) => {
+    return api.post('/userAddress/updateAddress', data)
+  },
+
+  // 新增用户地址
+  addUserAddress: (data: {
+    userId: number
+    receiverName: string
+    receiverPhone: string
+    province: string
+    city: string
+    status: number
+    district?: string | null
+    detailAddress: string
+    postalCode?: string | null
+  }) => {
+    return api.post('/userAddress/addAddress', data)
+  },
+
+  // 删除用户地址
+  removeUserAddress: (data: { id: number }) => {
+    return api.post('/userAddress/removeAddress', data)
   },
 
   // 取消订单

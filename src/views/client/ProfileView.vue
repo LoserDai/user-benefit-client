@@ -37,6 +37,11 @@
               <el-icon><Coin /></el-icon>
               <span>积分管理</span>
             </el-menu-item>
+
+            <el-menu-item index="address">
+              <el-icon><LocationFilled /></el-icon>
+              <span>收货地址</span>
+            </el-menu-item>
           </el-menu>
         </el-card>
       </div>
@@ -161,6 +166,202 @@
             </div>
           </div>
         </el-card>
+
+        <!-- 收货地址管理 -->
+        <el-card v-if="activeMenu === 'address'" class="profile-card">
+          <template #header>
+            <div class="address-header">
+              <h2>收货地址管理</h2>
+              <el-button type="primary" @click="showAddAddressDialog = true">
+                <el-icon><Plus /></el-icon>
+                新增地址
+              </el-button>
+            </div>
+          </template>
+
+          <div class="address-list" v-loading="isLoadingAddresses">
+            <el-empty v-if="addresses.length === 0" description="暂无收货地址" />
+
+            <div v-else class="address-items">
+              <div
+                v-for="address in addresses"
+                :key="address.id"
+                class="address-item"
+                :class="{ 'default-address': address.status === 1 }"
+              >
+                <div class="address-content">
+                  <div class="address-info">
+                    <div class="receiver-info">
+                      <span class="receiver-name">{{ address.receiverName }}</span>
+                      <span class="receiver-phone">{{ address.receiverPhone }}</span>
+                    </div>
+                    <div class="address-detail">
+                      {{ address.province }} {{ address.city }} {{ address.district || '' }}
+                      {{ address.detailAddress }}
+                    </div>
+                    <div class="address-meta">
+                      <span class="postal-code">邮编: {{ address.postalCode || '暂无' }}</span>
+                      <span class="create-time"
+                        >创建时间: {{ formatDate(address.createTime) }}</span
+                      >
+                    </div>
+                  </div>
+                  <div class="address-actions">
+                    <el-button type="primary" size="small" @click="editAddress(address)">
+                      编辑
+                    </el-button>
+                    <el-button type="danger" size="small" @click="deleteAddress(address.id)">
+                      删除
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 地址分页 -->
+            <div class="pagination-container" v-if="addressPagination.total > 0">
+              <el-pagination
+                v-model:current-page="addressPagination.pageNum"
+                v-model:page-size="addressPagination.pageSize"
+                :page-sizes="[5, 10, 20, 50]"
+                :total="addressPagination.total"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="handleAddressSizeChange"
+                @current-change="handleAddressCurrentChange"
+              />
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 编辑地址对话框 -->
+        <el-dialog v-model="showEditAddressDialog" title="编辑收货地址" width="600px">
+          <el-form
+            :model="editAddressForm"
+            :rules="addressRules"
+            ref="editAddressFormRef"
+            label-width="100px"
+          >
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="收货人" prop="receiverName">
+                  <el-input v-model="editAddressForm.receiverName" placeholder="请输入收货人姓名" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="手机号" prop="receiverPhone">
+                  <el-input v-model="editAddressForm.receiverPhone" placeholder="请输入手机号" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item label="省份" prop="province">
+                  <el-input v-model="editAddressForm.province" placeholder="请输入省份" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="城市" prop="city">
+                  <el-input v-model="editAddressForm.city" placeholder="请输入城市" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="区县" prop="district">
+                  <el-input v-model="editAddressForm.district" placeholder="请输入区县（可选）" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item label="详细地址" prop="detailAddress">
+              <el-input v-model="editAddressForm.detailAddress" placeholder="请输入详细地址" />
+            </el-form-item>
+
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="邮政编码" prop="postalCode">
+                  <el-input
+                    v-model="editAddressForm.postalCode"
+                    placeholder="请输入邮政编码（可选）"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button @click="showEditAddressDialog = false">取消</el-button>
+              <el-button type="primary" @click="saveEditAddress" :loading="isSavingAddress">
+                {{ isSavingAddress ? '保存中...' : '保存' }}
+              </el-button>
+            </span>
+          </template>
+        </el-dialog>
+
+        <!-- 新增地址对话框 -->
+        <el-dialog v-model="showAddAddressDialog" title="新增收货地址" width="600px">
+          <el-form
+            :model="addAddressForm"
+            :rules="addressRules"
+            ref="addAddressFormRef"
+            label-width="100px"
+          >
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="收货人" prop="receiverName">
+                  <el-input v-model="addAddressForm.receiverName" placeholder="请输入收货人姓名" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="手机号" prop="receiverPhone">
+                  <el-input v-model="addAddressForm.receiverPhone" placeholder="请输入手机号" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item label="省份" prop="province">
+                  <el-input v-model="addAddressForm.province" placeholder="请输入省份" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="城市" prop="city">
+                  <el-input v-model="addAddressForm.city" placeholder="请输入城市" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="区县" prop="district">
+                  <el-input v-model="addAddressForm.district" placeholder="请输入区县（可选）" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item label="详细地址" prop="detailAddress">
+              <el-input v-model="addAddressForm.detailAddress" placeholder="请输入详细地址" />
+            </el-form-item>
+
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="邮政编码" prop="postalCode">
+                  <el-input
+                    v-model="addAddressForm.postalCode"
+                    placeholder="请输入邮政编码（可选）"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button @click="cancelAddAddress">取消</el-button>
+              <el-button type="primary" @click="saveAddAddress" :loading="isSavingAddress">
+                {{ isSavingAddress ? '保存中...' : '保存' }}
+              </el-button>
+            </span>
+          </template>
+        </el-dialog>
       </div>
     </div>
   </div>
@@ -168,7 +369,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { LocationFilled, Plus, UserFilled, Coin, User } from '@element-plus/icons-vue'
 import { userApi } from '@/api/user'
 
 // 响应式数据
@@ -193,6 +395,61 @@ const userInfo = ref({
 
 // 积分历史 - 初始化为空数组，从后端获取
 const pointsHistory = ref([])
+
+// 地址管理相关数据
+const addresses = ref<any[]>([])
+const isLoadingAddresses = ref(false)
+const showAddAddressDialog = ref(false)
+const showEditAddressDialog = ref(false)
+const currentAddress = ref<any>(null)
+const isSavingAddress = ref(false)
+const editAddressFormRef = ref()
+const addAddressFormRef = ref()
+
+// 地址分页相关
+const addressPagination = ref({
+  pageNum: 1,
+  pageSize: 10,
+  total: 0,
+})
+
+// 编辑地址表单
+const editAddressForm = ref({
+  id: 0,
+  userId: 0,
+  receiverName: '',
+  receiverPhone: '',
+  province: '',
+  city: '',
+  status: 1,
+  district: '',
+  detailAddress: '',
+  postalCode: '',
+})
+
+// 新增地址表单
+const addAddressForm = ref({
+  receiverName: '',
+  receiverPhone: '',
+  province: '',
+  city: '',
+  status: 1,
+  district: '',
+  detailAddress: '',
+  postalCode: '',
+})
+
+// 地址表单验证规则
+const addressRules = {
+  receiverName: [{ required: true, message: '请输入收货人姓名', trigger: 'blur' }],
+  receiverPhone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
+  ],
+  province: [{ required: true, message: '请输入省份', trigger: 'blur' }],
+  city: [{ required: true, message: '请输入城市', trigger: 'blur' }],
+  detailAddress: [{ required: true, message: '请输入详细地址', trigger: 'blur' }],
+}
 
 // 分页相关
 const pagination = ref({
@@ -337,6 +594,19 @@ const handleMenuSelect = (key: string) => {
       setTimeout(() => {
         if (userInfo.value.id && userInfo.value.id !== '未知') {
           fetchPointsHistory()
+        }
+      }, 200)
+    }
+  }
+
+  // 当选择地址管理时，调用查询地址接口
+  if (key === 'address') {
+    if (userInfo.value.id && userInfo.value.id !== '未知') {
+      fetchAddresses()
+    } else {
+      setTimeout(() => {
+        if (userInfo.value.id && userInfo.value.id !== '未知') {
+          fetchAddresses()
         }
       }, 200)
     }
@@ -488,6 +758,209 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   pagination.value.pageNum = val
   fetchPointsHistory()
+}
+
+// 地址管理相关方法
+const fetchAddresses = async () => {
+  try {
+    isLoadingAddresses.value = true
+    const request = {
+      userId: Number(userInfo.value.id),
+      status: 1, // 只查询默认地址
+      pageNum: addressPagination.value.pageNum,
+      pageSize: addressPagination.value.pageSize,
+    }
+    const response = await userApi.queryAllUserAddress(request)
+    if (response.data && response.data.data) {
+      addresses.value = response.data.data
+      addressPagination.value.total = response.data.total || 0
+    } else {
+      addresses.value = []
+      addressPagination.value.total = 0
+    }
+  } catch (error: any) {
+    console.error('获取地址列表失败:', error)
+    ElMessage.error('获取地址列表失败')
+    addresses.value = []
+    addressPagination.value.total = 0
+  } finally {
+    isLoadingAddresses.value = false
+  }
+}
+
+const editAddress = (address: any) => {
+  // 填充编辑表单
+  editAddressForm.value = {
+    id: address.id,
+    userId: address.userId,
+    receiverName: address.receiverName,
+    receiverPhone: address.receiverPhone,
+    province: address.province,
+    city: address.city,
+    status: address.status,
+    district: address.district || '',
+    detailAddress: address.detailAddress,
+    postalCode: address.postalCode || '',
+  }
+  showEditAddressDialog.value = true
+}
+
+const deleteAddress = async (addressId: number) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这个地址吗？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+
+    // 调用删除地址的API
+    const response = await userApi.removeUserAddress({
+      id: addressId,
+    })
+
+    if (response.data !== undefined) {
+      ElMessage.success('地址删除成功')
+      // 重新获取地址列表
+      await fetchAddresses()
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('删除地址失败:', error)
+      if (error.message) {
+        ElMessage.error(error.message)
+      } else {
+        ElMessage.error('删除地址失败，请重试')
+      }
+    }
+  }
+}
+
+const setDefaultAddress = async (addressId: number) => {
+  try {
+    // 这里可以调用设置默认地址的API
+    // await userApi.setDefaultAddress(addressId)
+
+    ElMessage.success('设置默认地址成功')
+    await fetchAddresses()
+  } catch (error: any) {
+    console.error('设置默认地址失败:', error)
+    ElMessage.error('设置默认地址失败')
+  }
+}
+
+// 保存编辑的地址
+const saveEditAddress = async () => {
+  try {
+    // 表单验证
+    await editAddressFormRef.value.validate()
+
+    isSavingAddress.value = true
+
+    const updateData = {
+      id: editAddressForm.value.id,
+      userId: editAddressForm.value.userId,
+      receiverName: editAddressForm.value.receiverName,
+      receiverPhone: editAddressForm.value.receiverPhone,
+      province: editAddressForm.value.province,
+      city: editAddressForm.value.city,
+      status: editAddressForm.value.status,
+      district: editAddressForm.value.district || null,
+      detailAddress: editAddressForm.value.detailAddress,
+      postalCode: editAddressForm.value.postalCode || null,
+    }
+
+    const response = await userApi.updateUserAddress(updateData)
+
+    if (response.data) {
+      ElMessage.success('地址更新成功')
+      showEditAddressDialog.value = false
+      // 重新获取地址列表
+      await fetchAddresses()
+    }
+  } catch (error: any) {
+    if (error.message) {
+      ElMessage.error(error.message)
+    } else {
+      console.error('更新地址失败:', error)
+      ElMessage.error('更新地址失败，请重试')
+    }
+  } finally {
+    isSavingAddress.value = false
+  }
+}
+
+// 取消新增地址
+const cancelAddAddress = () => {
+  showAddAddressDialog.value = false
+  // 重置表单
+  addAddressForm.value = {
+    receiverName: '',
+    receiverPhone: '',
+    province: '',
+    city: '',
+    status: 1,
+    district: '',
+    detailAddress: '',
+    postalCode: '',
+  }
+  // 清除表单验证
+  if (addAddressFormRef.value) {
+    addAddressFormRef.value.resetFields()
+  }
+}
+
+// 保存新增的地址
+const saveAddAddress = async () => {
+  try {
+    // 表单验证
+    await addAddressFormRef.value.validate()
+
+    isSavingAddress.value = true
+
+    const addData = {
+      userId: Number(userInfo.value.id),
+      receiverName: addAddressForm.value.receiverName,
+      receiverPhone: addAddressForm.value.receiverPhone,
+      province: addAddressForm.value.province,
+      city: addAddressForm.value.city,
+      status: addAddressForm.value.status,
+      district: addAddressForm.value.district || null,
+      detailAddress: addAddressForm.value.detailAddress,
+      postalCode: addAddressForm.value.postalCode || null,
+    }
+
+    const response = await userApi.addUserAddress(addData)
+
+    if (response.data) {
+      ElMessage.success('地址新增成功')
+      showAddAddressDialog.value = false
+      // 重置表单
+      cancelAddAddress()
+      // 重新获取地址列表
+      await fetchAddresses()
+    }
+  } catch (error: any) {
+    if (error.message) {
+      ElMessage.error(error.message)
+    } else {
+      console.error('新增地址失败:', error)
+      ElMessage.error('新增地址失败，请重试')
+    }
+  } finally {
+    isSavingAddress.value = false
+  }
+}
+
+// 地址分页相关方法
+const handleAddressSizeChange = (val: number) => {
+  addressPagination.value.pageSize = val
+  addressPagination.value.pageNum = 1 // 切换每页大小时重置到第一页
+  fetchAddresses()
+}
+
+const handleAddressCurrentChange = (val: number) => {
+  addressPagination.value.pageNum = val
+  fetchAddresses()
 }
 
 // 组件挂载时获取用户信息
@@ -648,5 +1121,91 @@ onMounted(async () => {
   margin-bottom: 48px;
   padding-left: 8px;
   padding-right: 8px;
+}
+
+/* 地址管理样式 */
+.address-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.address-header h2 {
+  margin: 0;
+}
+
+.address-list {
+  min-height: 300px;
+}
+
+.address-items {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.address-item {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.address-item:hover {
+  border-color: #409eff;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.1);
+}
+
+.default-address {
+  border-color: #67c23a;
+  background-color: #f0f9ff;
+}
+
+.address-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.address-info {
+  flex: 1;
+}
+
+.receiver-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.receiver-name {
+  font-weight: 600;
+  color: #303133;
+  font-size: 16px;
+}
+
+.receiver-phone {
+  color: #606266;
+  font-size: 14px;
+}
+
+.address-detail {
+  color: #303133;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.address-meta {
+  display: flex;
+  gap: 16px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.address-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 </style>

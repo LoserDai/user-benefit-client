@@ -15,7 +15,7 @@ const activeIndex = ref('/')
 const searchKeyword = ref('')
 const showLoginDialog = ref(false)
 const showRegisterDialog = ref(false)
-const cartCount = ref(5) // 增加初始购物车数量
+const cartCount = ref(0) // 购物车数量
 const isLoggedIn = ref(false)
 const currentUser = ref('') // 当前登录用户名
 const userAvatar = ref('https://picsum.photos/200/200?random=1')
@@ -343,11 +343,19 @@ const handleScroll = () => {
               </template>
             </el-dropdown>
 
-            <el-badge :value="cartCount" class="cart-badge" :is-dot="cartCount > 9">
+            <el-badge
+              v-if="cartCount > 0"
+              :value="cartCount"
+              class="cart-badge"
+              :is-dot="cartCount > 9"
+            >
               <el-button circle @click="$router.push('/cart')" class="cart-button">
                 <el-icon><ShoppingCart /></el-icon>
               </el-button>
             </el-badge>
+            <el-button v-else circle @click="$router.push('/cart')" class="cart-button">
+              <el-icon><ShoppingCart /></el-icon>
+            </el-button>
           </div>
         </div>
       </div>

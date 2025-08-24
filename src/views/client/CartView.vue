@@ -68,6 +68,45 @@
               <span class="count">{{ selectedCount }} 件</span>
             </div>
             <el-divider />
+
+            <!-- 收货地址选择 -->
+            <div class="address-selection">
+              <h4>选择收货地址</h4>
+              <div v-if="isLoadingAddresses" class="loading-addresses">
+                <el-skeleton :rows="2" animated />
+              </div>
+              <div v-else-if="addresses.length === 0" class="no-address">
+                <el-empty description="暂无收货地址" size="small">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="$router.push('/profile?tab=address')"
+                  >
+                    去添加地址
+                  </el-button>
+                </el-empty>
+              </div>
+              <div v-else class="address-list">
+                <el-radio-group v-model="selectedAddressId" class="address-radio-group">
+                  <div v-for="address in addresses" :key="address.id" class="address-option">
+                    <el-radio :label="address.id" class="address-radio">
+                      <div class="address-info">
+                        <div class="receiver-info">
+                          <span class="receiver-name">{{ address.receiverName }}</span>
+                          <span class="receiver-phone">{{ address.receiverPhone }}</span>
+                        </div>
+                        <div class="address-detail">
+                          {{ address.province }} {{ address.city }} {{ address.district || '' }}
+                          {{ address.detailAddress }}
+                        </div>
+                      </div>
+                    </el-radio>
+                  </div>
+                </el-radio-group>
+              </div>
+            </div>
+
+            <el-divider />
             <div class="summary-item total">
               <span>结算Points：</span>
               <span class="final-price">{{ totalSelectedPoints }} Points</span>
@@ -76,7 +115,7 @@
               <el-button
                 type="primary"
                 size="large"
-                :disabled="selectedCount === 0"
+                :disabled="selectedCount === 0 || !selectedAddressId"
                 @click="checkout"
               >
                 结算 ({{ selectedCount }})
@@ -135,6 +174,11 @@ const router = useRouter()
 const currentUser = ref<any>(null)
 const isLoadingUser = ref(false)
 
+// 收货地址相关
+const addresses = ref<any[]>([])
+const selectedAddressId = ref<bigint | null>(null)
+const isLoadingAddresses = ref(false)
+
 // 获取当前用户信息
 const fetchCurrentUser = async () => {
   if (isLoadingUser.value) return
@@ -144,11 +188,44 @@ const fetchCurrentUser = async () => {
     const response = await userApi.getCurrentUser()
     if (response && response.data) {
       currentUser.value = response.data
+      // 获取用户信息成功后，获取收货地址
+      await fetchUserAddresses()
     }
   } catch (error) {
     console.error('获取用户信息失败:', error)
   } finally {
     isLoadingUser.value = false
+  }
+}
+
+// 获取用户收货地址
+const fetchUserAddresses = async () => {
+  if (!currentUser.value?.id) return
+
+  try {
+    isLoadingAddresses.value = true
+    const request = {
+      userId: Number(currentUser.value.id),
+      status: 1, // 只查询默认地址
+    }
+    const response = await userApi.queryAllUserAddress(request)
+    if (response.data && response.data.data) {
+      addresses.value = response.data.data
+      // 如果有地址，默认选择第一个
+      if (addresses.value.length > 0) {
+        selectedAddressId.value = addresses.value[0].id
+      }
+    } else {
+      addresses.value = []
+      selectedAddressId.value = null
+    }
+  } catch (error: any) {
+    console.error('获取收货地址失败:', error)
+    ElMessage.error('获取收货地址失败')
+    addresses.value = []
+    selectedAddressId.value = null
+  } finally {
+    isLoadingAddresses.value = false
   }
 }
 
@@ -294,9 +371,14 @@ const checkout = async () => {
     return
   }
 
+  if (!selectedAddressId.value) {
+    ElMessage.warning('请选择收货地址')
+    return
+  }
+
   try {
-    // 调用后端创建订单接口
-    const response = await userApi.createOrderMain()
+    // 调用后端创建订单接口，传递地址ID
+    const response = await userApi.createOrderMain(selectedAddressId.value)
     if (response && response.data !== undefined) {
       ElMessage.success('订单创建成功，正在跳转到订单页面...')
       // 跳转到订单页面
@@ -306,7 +388,11 @@ const checkout = async () => {
     }
   } catch (error: any) {
     console.error('创建订单失败:', error)
-    ElMessage.error('创建订单失败，请重试')
+    if (error.message) {
+      ElMessage.error(error.message)
+    } else {
+      ElMessage.error('创建订单失败，请重试')
+    }
   }
 }
 
@@ -598,6 +684,84 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* 地址选择样式 */
+.address-selection {
+  margin: 20px 0;
+}
+
+.address-selection h4 {
+  margin: 0 0 16px 0;
+  color: #303133;
+  font-size: 16px;
+}
+
+.loading-addresses {
+  padding: 20px 0;
+}
+
+.no-address {
+  padding: 20px 0;
+}
+
+.address-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.address-radio-group {
+  width: 100%;
+}
+
+.address-option {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.address-option:hover {
+  border-color: #409eff;
+  background-color: #f5f7fa;
+}
+
+.address-radio {
+  width: 100%;
+}
+
+.address-radio .el-radio__label {
+  width: 100%;
+  padding-left: 8px;
+}
+
+.address-info {
+  width: 100%;
+}
+
+.receiver-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.receiver-name {
+  font-weight: 600;
+  color: #303133;
+  font-size: 14px;
+}
+
+.receiver-phone {
+  color: #606266;
+  font-size: 14px;
+}
+
+.address-detail {
+  color: #606266;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .recommendations {
