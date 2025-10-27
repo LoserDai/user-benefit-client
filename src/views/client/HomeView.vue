@@ -123,7 +123,7 @@ const quickAccess = ref<QuickAccessItem[]>([
     id: 4,
     title: '积分兑换',
     description: '积分兑换好礼',
-    icon: 'Points',
+    icon: 'Switch',
     route: '/points',
   },
 ])
