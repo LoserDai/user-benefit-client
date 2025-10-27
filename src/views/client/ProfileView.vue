@@ -125,8 +125,8 @@
               <el-table-column prop="remark" label="描述" />
               <el-table-column prop="displayValue" label="变动金额" width="100">
                 <template #default="scope">
-                  <span :class="scope.row.displayValue > 0 ? 'earn' : 'spend'">
-                    {{ scope.row.displayValue > 0 ? '+' : '' }}{{ scope.row.displayValue }}
+                  <span :class="scope.row.changeType === 1 ? 'earn' : 'spend'">
+                    {{ scope.row.changeType === 1 ? '+' : '-' }}{{ scope.row.displayValue }}
                   </span>
                 </template>
               </el-table-column>
