@@ -432,10 +432,25 @@ const confirmReceive = async (order: any) => {
       type: 'warning',
     })
 
-    order.status = 3 // 已完成
-    ElMessage.success('确认收货成功')
-  } catch {
-    // 用户取消确认
+    // 调用后端接口完成订单
+    const response = await userApi.finishOrderMain({
+      orderNo: orderNumber,
+      userId: order.userId,
+    })
+
+    if (response && response.data) {
+      ElMessage.success('确认收货成功')
+      // 刷新订单数据
+      await fetchOrders()
+    } else {
+      ElMessage.error('确认收货失败，请重试')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      // 不是用户取消操作，而是其他错误
+      console.error('确认收货失败:', error)
+      ElMessage.error('确认收货失败，请重试')
+    }
   }
 }
 

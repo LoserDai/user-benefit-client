@@ -244,6 +244,11 @@ export const userApi = {
   payOrderMain: (orderNo: string) => {
     return api.post(`/orderMain/payOrderMain?orderNo=${encodeURIComponent(orderNo)}`)
   },
+
+  // 完成订单（确认收货）
+  finishOrderMain: (params: { orderNo: string; userId: number }) => {
+    return api.post('/orderMain/finishOrderMain', params)
+  },
 }
 
 // 产品相关接口
