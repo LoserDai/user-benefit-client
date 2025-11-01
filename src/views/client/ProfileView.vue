@@ -62,7 +62,7 @@
               <el-input v-model="userInfo.account" />
             </el-form-item>
             <el-form-item label="邮箱">
-              <el-input v-model="userInfo.email" disabled />
+              <el-input v-model="userInfo.email" />
             </el-form-item>
             <el-form-item label="手机号">
               <el-input v-model="userInfo.phone" />
